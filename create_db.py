@@ -5,7 +5,7 @@ def test_delete_db():
     if os.path.exists('guild.db'):
         os.remove('guild.db')
 
-def create_db():
+def create_db(): # create database upon initializing nbot.py
     conn = sqlite3.connect('guild.db', check_same_thread=False)
     cursor = conn.cursor()
     conn.execute('PRAGMA foreign_keys = ON')
@@ -40,8 +40,11 @@ def create_db():
         )
     ''')
 
-    conn.commit()
-    conn.close()
+    conn.commit() # commit created database
+    conn.close() # close connection
+
+
+# dictionary to help calculate xp value
 
 level_mults = {
             0: 1.0,
@@ -66,6 +69,7 @@ level_mults = {
             19: 162.8197       # Level 19 → 20
 }
 
+# xppw = xppw per word, faloff = 1
 xppw = 1
 falloff = 1
 
@@ -134,7 +138,17 @@ class Character(Connection):
             return f"No character named {character_name} found." # no result for name and discord_id
 
         return f"Character named {character_name} has had {xp} removed from their total. Can check new total with my_characters."
+    
+    def set_level(self, character_name: str, level: int, discord_id: int) -> str:
+        self.cursor.execute('''UPDATE characters
+                            SET level = ?
+                            WHERE name = ? AND discord_id = ?''', (level, character_name, discord_id))
+        
+        if self.cursor.rowcount == 0:
+            return f"No character named {character_name} found." # no result for name and discord_id
 
+        return f"Character named {character_name} has had their level set to {level}."
+    
 class Tupper(Connection):
     def register_tupper(self, bracket, character_id):
         """Register a tupper bracket. Brackets may not be re-used across a player."""
