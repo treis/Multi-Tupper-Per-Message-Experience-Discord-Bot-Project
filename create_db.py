@@ -18,7 +18,7 @@ def create_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS characters (
             character_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            xp REAL DEFAULT 0.0,
+            xp REAL DEFAULT 0.0 CHECK (xp >= 0),
             discord_id TEXT NOT NULL,
             name TEXT NOT NULL UNIQUE,
             level INTEGER CHECK (level >= 1 AND level <= 20) DEFAULT 1,
@@ -120,10 +120,20 @@ class Player(Connection):
         return return_message
 
 class Character(Connection):
-    def register_character(self, discord_id, character_name):
+    def register_character(self, discord_id, character_name) -> str:
         """Registers a character."""
         self.cursor.execute('INSERT INTO characters (discord_id, name) VALUES (?, ?)', (discord_id, character_name))
         return f"Character named {character_name} has been added to the database."
+    
+    def remove_xp(self, character_name: str, xp: int, discord_id: int) -> str: 
+        self.cursor.execute('''UPDATE characters
+                            SET xp = MAX(xp - ?, 0)
+                            WHERE name = ? AND discord_id = ?''', (xp, character_name, discord_id))
+
+        if self.cursor.rowcount == 0:
+            return f"No character named {character_name} found." # no result for name and discord_id
+
+        return f"Character named {character_name} has had {xp} removed from their total. Can check new total with my_characters."
 
 class Tupper(Connection):
     def register_tupper(self, bracket, character_id):

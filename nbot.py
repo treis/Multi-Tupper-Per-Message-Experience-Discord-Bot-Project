@@ -41,6 +41,8 @@ async def on_ready():
     print("The bot is alive, and the database is operational. ")
     await bot.tree.sync(guild=GUILD_ID)
 
+    conn.commit()
+
 @bot.event # return if user is the one sending a message
 async def on_message(message):
     if message.author == bot.user:
@@ -49,6 +51,8 @@ async def on_message(message):
     tupper_try = message.content.split(":", 1)[0] + ":"
     tupper = Tupper(message.author.id, cursor)
     tupper.add_xp_by_bracket(word_count, tupper_try)
+
+    conn.commit()
 
 # User Commands
     
@@ -63,6 +67,8 @@ async def RegisterPlayer(interaction: discord.Interaction):
     except: 
         await interaction.response.send_message(f"You are already in the database, {interaction.user.name}")
 
+    conn.commit()
+
 @bot.tree.command(name='my_characters', description="Returns a list of your characters.", guild=GUILD_ID)
 async def SeeMyCharacters(interaction: discord.Interaction):
     discord_id = interaction.user.id
@@ -72,11 +78,15 @@ async def SeeMyCharacters(interaction: discord.Interaction):
     command_embed_instance.add_field(name="Command Output for SeeMyCharacters", value=f"Success! \n\n {message}")
     await interaction.response.send_message(embed=command_embed_instance)
 
+    conn.commit()
+
 @bot.tree.command(name='return_players', description="Returns list of player discord_ids for debugging purposes.", guild=GUILD_ID)
 async def ReturnPlayers(interaction: discord.Interaction):
     cursor.execute(f"SELECT * FROM players;")
     rows = cursor.fetchall()
     await interaction.response.send_message(rows)
+
+    conn.commit()
 
 @bot.tree.command(name='add_character', description="Creates a character", guild=GUILD_ID)
 async def AddCharacter(interaction: discord.Interaction, name: str):
@@ -90,19 +100,18 @@ async def AddCharacter(interaction: discord.Interaction, name: str):
     except sqlite3.IntegrityError as e:
         await interaction.response.send_message(f"Error, character name already in use: \n + ```{e}```.")
 
+    conn.commit()
+
 @bot.tree.command(name='add_tupper', description="Adds a tupper.", guild=GUILD_ID)
 async def AddTupper(interaction: discord.Interaction, bracket: str, character_name: str):
-
     bracket = bracket.lower()
     valid_brackets = bracket.endswith(':') # tupper brackets must end with a colon 
     discord_id = interaction.user.id
-
     if valid_brackets:
         print("Placeholder.")
     else: 
         await interaction.response.send_message(f"Make sure that your tupper brackets end with a colon.")
         return
-
     try: 
         cursor.execute('SELECT character_id FROM characters WHERE name = ?', (character_name,))
         row = cursor.fetchone()
@@ -117,29 +126,40 @@ async def AddTupper(interaction: discord.Interaction, bracket: str, character_na
 
     await interaction.response.send_message(embed=command_embed_instance)
 
+    conn.commit()
+
 @bot.tree.command(name='remove_tupper', description="Removes a tupper.", guild=GUILD_ID)
 async def RemoveTupper(interaction: discord.Interaction, bracket: str):
-    
     valid_brackets = bracket.endswith(':') # tupper brackets must end with a colon 
     discord_id = interaction.user.id
-
     if valid_brackets:
         print("Placeholder.")
     else: 
         await interaction.response.send_message(f"Make sure that your tupper brackets end with a colon.")
         return
-
     tupper = Tupper(discord_id, cursor)
-
     try: 
         message = tupper.delete_tupper(bracket)
     except: 
         await interaction.response.send_message("No characters with that tupper found.")
-
     await interaction.response.send_message(message)
+
+    conn.commit()
+
+@bot.tree.command(name='remove_xp_from_character', description="Command that removes xp by discord_id,", guild=GUILD_ID)
+async def RemoveXPFromCharacter(interaction: discord.Interaction, character_name: str, xp: str):
+    try: # see if can turn string xp into int xp, if not, return helpful error message
+        int(xp)
+    except: 
+        await interaction.response.send_message("Please input a number, no decimal points.")
+    discord_id = interaction.user.id
+    character = Character(discord_id, cursor)
+    message = character.remove_xp(character_name, int(xp), discord_id) # turn 
+    await interaction.response.send_message(message)
+
+    conn.commit()
 
 @bot.event # close database connection if bot goes offline
 async def shutdown():
     conn.close()
-
 bot.run(bot_token)
