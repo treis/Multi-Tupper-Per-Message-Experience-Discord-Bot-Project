@@ -28,6 +28,18 @@ def create_db(): # create database upon initializing nbot.py
     ''')
 
     cursor.execute('''
+    CREATE TABLE IF NOT EXISTS admins (
+        discord_id TEXT PRIMARY KEY
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS admin_roles (
+        role_id TEXT PRIMARY KEY
+    )
+    ''')
+
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS tupper_brackets (
             bracket TEXT NOT NULL,
             character_id INTEGER NOT NULL,
@@ -79,7 +91,20 @@ class Connection:
         self.discord_id = discord_id
         self.cursor = cursor
 
+# class Admin(Connection): 
+#    """Class that represents a connection to the databse for use in admin permissions manipulation."""
+#    def add_admin_role(): 
+
+
 class Player(Connection):
+    def get_owned_character(self, character_name): # check to make sure other players can't edit characters they do not own
+        self.cursor.execute(
+            "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
+            (character_name, self.discord_id)
+        )
+        row = self.cursor.fetchone()
+        return row[0] if row else None
+
     def register_player(self, discord_username):
         """Registers a player."""
         self.cursor.execute('INSERT INTO players (discord_id) VALUES (?)', (self.discord_id,))
@@ -124,6 +149,17 @@ class Player(Connection):
         return return_message
 
 class Character(Connection):
+
+    def get_owned_character(self, name):
+        self.cursor.execute(
+            "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
+            (name, self.discord_id)
+        )
+        row = self.cursor.fetchone()
+        if not row:
+            return None
+        return row[0]
+
     def register_character(self, discord_id, character_name) -> str:
         """Registers a character."""
         self.cursor.execute('INSERT INTO characters (discord_id, name) VALUES (?, ?)', (discord_id, character_name))
@@ -149,7 +185,36 @@ class Character(Connection):
 
         return f"Character named {character_name} has had their level set to {level}."
     
+    def delete_character(self, character_name: str, discord_id: int): 
+        self.cursor.execute('''
+        DELETE FROM characters
+        WHERE name = ? AND discord_id = ?
+        ''', (character_name, discord_id))
+
+        if self.cursor.rowcount == 0:
+            return f"No character named {character_name} found." # no result for name and discord_id
+        
+        return f"Character named {character_name} has been deleted."
+    
+    def rename_character (self, character_name, new_character_name): 
+        self.cursor.execute('''
+            UPDATE characters
+            SET name = ?
+            WHERE name = ?
+        ''', (character_name, new_character_name))
+
+        return f"{character_name} has been renamed to {new_character_name}."
+
 class Tupper(Connection):
+
+    def verify_ownership(self, character_id): # check that player owns character they are trying to edit tuppers of
+        self.cursor.execute(
+            "SELECT character_id FROM characters WHERE character_id = ? AND discord_id = ?",
+            (character_id, self.discord_id)
+        )
+        return self.cursor.fetchone() is not None
+       
+
     def register_tupper(self, bracket, character_id):
         """Register a tupper bracket. Brackets may not be re-used across a player."""
         self.cursor.execute('INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)', (bracket, character_id, self.discord_id))
@@ -192,3 +257,12 @@ class Tupper(Connection):
         ''', (round(rpxp_raw, 1), character_id))
 
         return f"{round(rpxp_raw,1)} XP added to character with tupper {bracket}."
+    
+    def tupper_belongs_to_player(self, tupper_bracket):
+        self.cursor.execute('''
+        SELECT t.bracket
+        FROM tupper_brackets t
+        JOIN characters c ON t.character_id = c.character_id
+        WHERE t.bracket = ? AND c.discord_id = ?
+        ''', (tupper_bracket, self.discord_id))
+        return self.cursor.fetchone() is not None  # True if tupper belongs to player
