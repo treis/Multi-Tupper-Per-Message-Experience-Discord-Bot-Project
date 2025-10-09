@@ -34,8 +34,6 @@ async def on_ready():
     print("The bot is alive, and the database is operational.")
     await bot.tree.sync(guild=GUILD_ID)
 
-    conn.commit()
-
 @bot.event  # return if user is the one sending a message
 async def on_message(message):
     if message.author == bot.user:
@@ -46,11 +44,11 @@ async def on_message(message):
         tupper = Tupper(message.author.id, cursor)
         tupper.add_xp_by_bracket(word_count, tupper_try)
 
-        conn.commit()
-
     except Exception as e:
         print(f"Error in on_message:\n{e}")
         return
+    
+    conn.commit()
 
 # User Commands
 
@@ -60,13 +58,12 @@ async def RegisterPlayer(interaction: discord.Interaction):
     player = Player(discord_id, cursor)
     try: 
         success_message = player.register_player(interaction.user.name)
-
-        conn.commit()
-
         await interaction.response.send_message(success_message)
     except Exception as e: 
         await interaction.response.send_message(f"You are already in the database, {interaction.user.name}\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='my_characters', description="Returns a list of your characters.", guild=GUILD_ID)
 async def SeeMyCharacters(interaction: discord.Interaction):
@@ -78,11 +75,11 @@ async def SeeMyCharacters(interaction: discord.Interaction):
         command_embed_instance.add_field(name="Command Output for SeeMyCharacters", value=f"Success! \n\n {message}")
         await interaction.response.send_message(embed=command_embed_instance)
 
-        conn.commit()
-
     except Exception as e:
         await interaction.response.send_message(f"Error retrieving characters:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='return_players', description="Returns list of player discord_ids for debugging purposes.", guild=GUILD_ID)
 async def ReturnPlayers(interaction: discord.Interaction):
@@ -91,11 +88,11 @@ async def ReturnPlayers(interaction: discord.Interaction):
         rows = cursor.fetchall()
         await interaction.response.send_message(rows)
 
-        conn.commit()
-
     except Exception as e:
         await interaction.response.send_message(f"Error retrieving players:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='add_character', description="Creates a character", guild=GUILD_ID)
 async def AddCharacter(interaction: discord.Interaction, name: str):
@@ -105,8 +102,6 @@ async def AddCharacter(interaction: discord.Interaction, name: str):
     try: 
         message = character.register_character(discord_id, name)
 
-        conn.commit()
-
         await interaction.response.send_message(message)
     except sqlite3.IntegrityError as e:
         await interaction.response.send_message(f"Error, character name already in use:\n{e}")
@@ -114,6 +109,8 @@ async def AddCharacter(interaction: discord.Interaction, name: str):
     except Exception as e:
         await interaction.response.send_message(f"Error adding character:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='add_tupper', description="Adds a tupper.", guild=GUILD_ID)
 async def AddTupper(interaction: discord.Interaction, bracket: str, character_name: str):
@@ -139,11 +136,11 @@ async def AddTupper(interaction: discord.Interaction, bracket: str, character_na
         )
         await interaction.response.send_message(embed=command_embed_instance)
 
-        conn.commit()
-
     except Exception as e:
         await interaction.response.send_message(f"Error adding tupper:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='remove_tupper', description="Removes a tupper.", guild=GUILD_ID)
 async def RemoveTupper(interaction: discord.Interaction, bracket: str):
@@ -162,11 +159,11 @@ async def RemoveTupper(interaction: discord.Interaction, bracket: str):
         message = tupper.delete_tupper(bracket)
         await interaction.response.send_message(message)
 
-        conn.commit()
-
     except Exception as e: 
         await interaction.response.send_message(f"Error removing tupper:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='remove_xp_from_character', description="Command that removes xp by discord_id,", guild=GUILD_ID)
 async def RemoveXPFromCharacter(interaction: discord.Interaction, character_name: str, xp: str):
@@ -198,6 +195,8 @@ async def RemoveXPFromCharacter(interaction: discord.Interaction, character_name
     except Exception as e: 
         await interaction.response.send_message(f"Error removing XP:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='set_level_of_character', description="Command that removes xp by discord_id,", guild=GUILD_ID)
 async def SetCharacterLevel(interaction: discord.Interaction, character_name: str, level: str):
@@ -221,12 +220,12 @@ async def SetCharacterLevel(interaction: discord.Interaction, character_name: st
         character = Character(discord_id, cursor)
         character.set_level(character_name, level_int, discord_id)
 
-        conn.commit()
-
         await interaction.response.send_message(f"Character {character_name} level set to {level_int}.")
     except Exception as e: 
         await interaction.response.send_message(f"Error setting level:\n{e}")
         return
+    
+    conn.commit()
 
 @bot.tree.command(name='delete_character', description="Command that deleted a character.", guild=GUILD_ID)
 async def DeleteCharacter(interaction: discord.Interaction, character_name: str):    
@@ -241,12 +240,12 @@ async def DeleteCharacter(interaction: discord.Interaction, character_name: str)
         character = Character(discord_id, cursor)
         message = character.delete_character(character_name, discord_id)
 
-        conn.commit()
-
         await interaction.response.send_message(message)
     except Exception as e: 
         await interaction.response.send_message(f"Character deletion has failed: \n {e}.")
         return
+    
+    conn.commit()
     
 @bot.tree.command(name='rename_character', description="Command that renames a pre-existing character.", guild=GUILD_ID)
 async def RenameCharacter(interaction: discord.Interaction, character_name: str, new_character_name: str):    
@@ -261,12 +260,12 @@ async def RenameCharacter(interaction: discord.Interaction, character_name: str,
         character = Character(discord_id, cursor)
         message = character.rename_character(character_name, new_character_name)
 
-        conn.commit()
-
         await interaction.response.send_message(message)
     except Exception as e: 
         await interaction.response.send_message(f"Character renaming has failed: \n {e}.")
         return
+    
+    conn.commit()
 
 @bot.event  # close database connection if bot goes offline
 async def shutdown():
