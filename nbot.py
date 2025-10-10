@@ -16,8 +16,15 @@ if os.path.exists('guild.db'):
     test_delete_db()  # delete database on re-run
     create_db()       # create db
 
-conn = sqlite3.connect('guild.db', check_same_thread=False)
-cursor = conn.cursor()  # create database connection
+# conn = sqlite3.connect('guild.db', check_same_thread=False)
+# cursor = conn.cursor()  # create database connection
+
+### helper function to return new connections to ensure no database collissions
+
+def return_db_connection(): 
+    conn = sqlite3.connect('guild.db', check_same_thread=False)
+    cursor = conn.cursor()  # create database connection
+    return conn, cursor
 
 ### Bot
 
@@ -54,6 +61,9 @@ async def on_message(message):
 
 @bot.tree.command(name='register_me', description="Adds you to the database so you can use other functions of the bot.", guild=GUILD_ID)
 async def RegisterPlayer(interaction: discord.Interaction):
+
+    conn, cursor = return_db_connection()
+
     discord_id = interaction.user.id
     player = Player(discord_id, cursor)
     try: 
@@ -67,6 +77,9 @@ async def RegisterPlayer(interaction: discord.Interaction):
 
 @bot.tree.command(name='my_characters', description="Returns a list of your characters.", guild=GUILD_ID)
 async def SeeMyCharacters(interaction: discord.Interaction):
+
+    conn, cursor = return_db_connection()
+    
     discord_id = interaction.user.id
     try:
         player = Player(discord_id, cursor)
@@ -83,6 +96,9 @@ async def SeeMyCharacters(interaction: discord.Interaction):
 
 @bot.tree.command(name='return_players', description="Returns list of player discord_ids for debugging purposes.", guild=GUILD_ID)
 async def ReturnPlayers(interaction: discord.Interaction):
+
+    conn, cursor = return_db_connection()
+
     try:
         cursor.execute("SELECT * FROM players;")
         rows = cursor.fetchall()
@@ -96,6 +112,9 @@ async def ReturnPlayers(interaction: discord.Interaction):
 
 @bot.tree.command(name='add_character', description="Creates a character", guild=GUILD_ID)
 async def AddCharacter(interaction: discord.Interaction, name: str):
+
+    conn, cursor = return_db_connection()
+
     name = name.lower()
     discord_id = interaction.user.id
     character = Character(discord_id, cursor)
@@ -114,6 +133,9 @@ async def AddCharacter(interaction: discord.Interaction, name: str):
 
 @bot.tree.command(name='add_tupper', description="Adds a tupper.", guild=GUILD_ID)
 async def AddTupper(interaction: discord.Interaction, bracket: str, character_name: str):
+
+    conn, cursor = return_db_connection()
+    
     bracket = bracket.lower()
     valid_brackets = bracket.endswith(':')  # tupper brackets must end with a colon 
     discord_id = interaction.user.id
@@ -144,6 +166,9 @@ async def AddTupper(interaction: discord.Interaction, bracket: str, character_na
 
 @bot.tree.command(name='remove_tupper', description="Removes a tupper.", guild=GUILD_ID)
 async def RemoveTupper(interaction: discord.Interaction, bracket: str):
+
+    conn, cursor = return_db_connection()
+
     discord_id = interaction.user.id
     tupper = Tupper(discord_id, cursor)
     if not tupper.tupper_belongs_to_player(bracket):
@@ -167,6 +192,8 @@ async def RemoveTupper(interaction: discord.Interaction, bracket: str):
 
 @bot.tree.command(name='remove_xp_from_character', description="Command that removes xp by discord_id,", guild=GUILD_ID)
 async def RemoveXPFromCharacter(interaction: discord.Interaction, character_name: str, xp: str):
+
+    conn, cursor = return_db_connection()
 
     if int(xp) != abs(int(xp)): 
         await interaction.response.send_message("Nice try. Make it positive.")
@@ -200,6 +227,9 @@ async def RemoveXPFromCharacter(interaction: discord.Interaction, character_name
 
 @bot.tree.command(name='set_level_of_character', description="Command that removes xp by discord_id,", guild=GUILD_ID)
 async def SetCharacterLevel(interaction: discord.Interaction, character_name: str, level: str):
+
+    conn, cursor = return_db_connection()
+
     discord_id = interaction.user.id
     character = Character(discord_id, cursor)
     character_id = character.get_owned_character(character_name)
@@ -229,6 +259,9 @@ async def SetCharacterLevel(interaction: discord.Interaction, character_name: st
 
 @bot.tree.command(name='delete_character', description="Command that deleted a character.", guild=GUILD_ID)
 async def DeleteCharacter(interaction: discord.Interaction, character_name: str):    
+
+    conn, cursor = return_db_connection()
+
     discord_id = interaction.user.id
     character = Character(discord_id, cursor)
     character_id = character.get_owned_character(character_name)
@@ -248,7 +281,10 @@ async def DeleteCharacter(interaction: discord.Interaction, character_name: str)
     conn.commit()
     
 @bot.tree.command(name='rename_character', description="Command that renames a pre-existing character.", guild=GUILD_ID)
-async def RenameCharacter(interaction: discord.Interaction, character_name: str, new_character_name: str):    
+async def RenameCharacter(interaction: discord.Interaction, character_name: str, new_character_name: str):
+
+    conn, cursor = return_db_connection()
+
     discord_id = interaction.user.id
     character = Character(discord_id, cursor)
     character_id = character.get_owned_character(character_name)
@@ -266,9 +302,5 @@ async def RenameCharacter(interaction: discord.Interaction, character_name: str,
         return
     
     conn.commit()
-
-@bot.event  # close database connection if bot goes offline
-async def shutdown():
-    conn.close()
 
 bot.run(bot_token)

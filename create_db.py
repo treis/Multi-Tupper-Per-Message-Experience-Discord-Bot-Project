@@ -201,7 +201,7 @@ class Character(Connection):
             UPDATE characters
             SET name = ?
             WHERE name = ?
-        ''', (character_name, new_character_name))
+        ''', (new_character_name, character_name))
 
         return f"{character_name} has been renamed to {new_character_name}."
 
