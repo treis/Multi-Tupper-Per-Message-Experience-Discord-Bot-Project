@@ -37,16 +37,38 @@ level_mults = {
 xppw = 1
 falloff = 1
 
-# class Admin(Connection): 
-#    def make_admin_role(self, discord_id):
-#        self.cursor.execute("INSERT into ")
-#        
-    # def remove_admin
+class AuditLogging(Connection):
+    def __init__(self, discord_id: int, cursor):
+        super().__init__(discord_id, cursor)
 
+    def create_log(self, discord_id, command_type, command_message):
+        self.cursor.execute(
+            "INSERT INTO logs (discord_id, command_type, command_message) VALUES (?, ?, ?)",
+            (discord_id, command_type, command_message)
+        )
+        self.conn.commit()
 
-class AuditLogging(Connection): 
-    def create_log(self, command_type, command_message, discord_id):
-        self.cursor.execute 
+    async def get_logs(self, discord_id=None, command_type=None, start_date=None, end_date=None):
+        query = "SELECT discord_id, command_type, command_message, date FROM logs WHERE 1=1"
+        params = []
+
+        if discord_id:
+            query += " AND discord_id = ?"
+            params.append(discord_id)
+        if command_type:
+            query += " AND command_type = ?"
+            params.append(command_type)
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+
+        self.cursor.execute(query, tuple(params))
+        rows = self.cursor.fetchall()
+        logs = [f"{r[0]} | {r[1]} | {r[2]} | {r[3]}" for r in rows]
+        return logs
 
 
 class Player(Connection):
@@ -166,7 +188,6 @@ class Tupper(Connection):
             (character_id, self.discord_id)
         )
         return self.cursor.fetchone() is not None
-       
 
     def register_tupper(self, bracket, character_id):
         """Register a tupper bracket. Brackets may not be re-used across a player."""

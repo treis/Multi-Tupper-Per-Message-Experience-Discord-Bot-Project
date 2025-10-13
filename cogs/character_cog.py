@@ -4,31 +4,42 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 import sqlite3
+from log_command import log_command
 
 class CharacterCommands(commands.Cog):
+
     def __init__(self, bot):
         self.bot = bot
-
     @app_commands.command(name='add_character', description="Creates a character") 
     @app_commands.guilds(GUILD_ID) 
     async def add_character(self, interaction: discord.Interaction, name: str):
-        name = name.lower()
-        conn, cursor = return_db_connection()
-        discord_id = interaction.user.id
-        character = Character(discord_id, cursor)
+            name = name.lower()
+            conn, cursor = return_db_connection()
+            discord_id = interaction.user.id
+            character = Character(discord_id, cursor)
 
-        try: 
-            message = character.register_character(discord_id, name)
-            conn.commit()
-            await interaction.response.send_message(message)
-        except sqlite3.IntegrityError as e:
-            conn.rollback()
-            await interaction.response.send_message(f"Error, character name already in use:\n{e}")
-        except Exception as e:
-            conn.rollback()
-            await interaction.response.send_message(f"Error adding character:\n{e}")
-        finally: 
-            conn.close()
+            success_flag = 'failed'
+            try: 
+                message = character.register_character(discord_id, name)
+                conn.commit()
+                await interaction.response.send_message(message)
+                success_flag = 'succeeded'
+            except sqlite3.IntegrityError as e:
+                conn.rollback()
+                await interaction.response.send_message(f"Error, character name already in use:\n{e}")
+            except Exception as e:
+                conn.rollback()
+                await interaction.response.send_message(f"Error adding character:\n{e}")
+            finally: 
+                # Call the helper to create a log
+                log_command(
+                    conn,
+                    cursor,
+                    discord_id,
+                    'create_character',
+                    f"{discord_id} {success_flag} to create character {name}."
+                )
+                conn.close()
 
     @app_commands.command(name='rename_character', description="Renames a character")  
     @app_commands.guilds(GUILD_ID)

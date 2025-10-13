@@ -6,8 +6,7 @@ from secret import bot_token
 from secret import guild_id
 import sqlite3
 from create_db import test_delete_db, create_db
-from db_management import Player, Character, Tupper
-from embed import EmbedWrapper
+from db_management import Tupper
 import asyncio
 
 ### Database
@@ -19,7 +18,7 @@ if os.path.exists('guild.db'):
 
 def return_db_connection(): 
     conn = sqlite3.connect('guild.db', check_same_thread=False)
-    cursor = conn.cursor()  # create database connection
+    cursor = conn.cursor()  # create database connections
     return conn, cursor
 
 ### Bot
@@ -65,6 +64,7 @@ async def load_cogs():
     await bot.load_extension("cogs.character_cog")
     await bot.load_extension("cogs.tupper_cog")
     await bot.load_extension("cogs.player_cog")
+    await bot.load_extension("cogs.admin_cog")
 
 # Start the bot
 async def main():

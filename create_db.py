@@ -1,14 +1,23 @@
-import sqlite3
+import sqlite3 
 import os
 
-def test_delete_db(): 
-    if os.path.exists('guild.db'):
-        os.remove('guild.db')
+def test_delete_db(db_name="guild.db"):
+    if os.path.exists(db_name):
+        os.remove(db_name)
+        print(f"Database '{db_name}' deleted successfully.")
+    else:
+        print(f"Database '{db_name}' does not exist.")
 
-def create_db(): # create database upon initializing nbot.py
+def create_db():  # create database upon initializing nbot.py
     conn = sqlite3.connect('guild.db', check_same_thread=False)
     cursor = conn.cursor()
     conn.execute('PRAGMA foreign_keys = ON')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS players (
+            discord_id TEXT PRIMARY KEY
+        )
+    ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS logs (
@@ -19,12 +28,6 @@ def create_db(): # create database upon initializing nbot.py
             date TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (discord_id) REFERENCES players(discord_id)
                 ON DELETE SET NULL
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS players (
-            discord_id TEXT PRIMARY KEY
         )
     ''')
 
@@ -41,9 +44,9 @@ def create_db(): # create database upon initializing nbot.py
     ''')
 
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS admins (
-        role_id TEXT PRIMARY KEY
-    )
+        CREATE TABLE IF NOT EXISTS admins (
+            role_name TEXT NOT NULL DEFAULT 'bot master'
+        )
     ''')
 
     cursor.execute('''
@@ -59,5 +62,5 @@ def create_db(): # create database upon initializing nbot.py
         )
     ''')
 
-    conn.commit() # commit created database
-    conn.close() # close connection
+    conn.commit()
+    conn.close()
