@@ -9,17 +9,15 @@ from create_db import test_delete_db, create_db
 import asyncio
 from db_management import Tupper
 
-### Database
-
 # Create database if not exist, and set up connection
 if os.path.exists('guild.db'):
-    test_delete_db()  # delete database on re-rune
+    test_delete_db()  # delete database on re-run (DEBUGGING)
     create_db()       # create db
 
-def return_db_connection(): 
+def return_db_connection(): # helper function that is re-used across the program to generate connections for the various commands (see cogs folder)
     conn = sqlite3.connect('guild.db', check_same_thread=False)
     cursor = conn.cursor()  # create database connections
-    return conn, cursor
+    return conn, cursor # cursor is used to execute commands, conn mainly exists past this point to be closed manually throughout the cog files
 
 ### Bot
 
@@ -33,35 +31,36 @@ bot = commands.Bot(command_prefix='^', intents=intents)
 
 # Events
 
-@bot.event
-async def on_ready():
+@bot.event 
+async def on_ready(): # executes when the bot comes online
     print(f"Bot is ready! Logged in as {bot.user}")
-    await bot.tree.sync(guild=GUILD_ID)
+    await bot.tree.sync(guild=GUILD_ID) # sync commands to discord server
 
 @bot.event
-async def on_message(message):
-    if message.author == bot.user:
+async def on_message(message): # executes every message
+    if message.author == bot.user: # if bot sends a command, don't do anything
         return
     
-    conn, cursor = return_db_connection()
+    conn, cursor = return_db_connection() 
     word_count = len(message.content.split())
-    tupper_try = message.content.split(":", 1)[0] + ":"
+    tupper_try = message.content.split(":", 1)[0] + ":" # takes the tupper at the beginning of the string 
 
-    try:
-        tupper = Tupper(message.author.id, cursor)
-        tupper.add_xp_by_bracket(word_count, tupper_try)
+    try: # try to 
+        tupper = Tupper(message.author.id, cursor) # make a Tupper object, which subclasses from a Connection (requires discord id and cursor) to the sq-lite server that can run specific commands, querying by discord id
+        tupper.add_xp_by_bracket(word_count, tupper_try) # run a Tupper object command that adds XP based on word count and the tupper
         conn.commit()
-    except Exception as e:
+
+    except Exception as e: # if anything goes wrong, print the error to console
         print(f"Error in on_message:\n{e}")
-        conn.rollback()
+        conn.rollback() # un-type sql code that may have been written by the cursor in Tupper.add_xp_by_bracket() method
     finally:
-        conn.close()
+        conn.close() # no matter what, close the connection
 
-    await bot.process_commands(message)
+    await bot.process_commands(message) # without this line, none of the other commands that require user input in the cogs will be registered
 
-# Load Cogs
+# Load Cogs (see cogs folder)
 async def load_cogs():
-    await bot.load_extension("cogs.character_cog")
+    await bot.load_extension("cogs.character_cog") # character_cog.py in cogs
     await bot.load_extension("cogs.tupper_cog")
     await bot.load_extension("cogs.player_cog")
     await bot.load_extension("cogs.admin_cog")

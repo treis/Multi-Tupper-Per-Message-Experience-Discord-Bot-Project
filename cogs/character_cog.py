@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 import sqlite3
-from decorators import log_command
+from log_command import log_command
 
 class CharacterCommands(commands.Cog):
 

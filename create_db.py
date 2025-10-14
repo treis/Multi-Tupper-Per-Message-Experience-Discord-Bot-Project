@@ -1,14 +1,16 @@
 import sqlite3 
 import os
 
-def test_delete_db(db_name="guild.db"):
+# This file exists to create the database 
+
+def test_delete_db(db_name="guild.db"): # function that exists to delete and then re-create the database every time, for debugging purposes. Should be commented out on first deployment. 
     if os.path.exists(db_name):
         os.remove(db_name)
         print(f"Database '{db_name}' deleted successfully.")
     else:
         print(f"Database '{db_name}' does not exist.")
 
-def create_db():  # create database upon initializing nbot.py
+def create_db():  # create database if it does not exist 
     conn = sqlite3.connect('guild.db', check_same_thread=False)
     cursor = conn.cursor()
     conn.execute('PRAGMA foreign_keys = ON')

@@ -16,7 +16,7 @@ class AdminCommands(commands.Cog):
         description="Returns logs by optional parameters, only usable by admins."
     )
     @app_commands.guilds(GUILD_ID)
-    @app_commands.choices(command_type=[
+    @app_commands.choices(command_type=[ # default list of options for 'command_type' field when it's being built by the user.
         app_commands.Choice(name="register_player", value="register_player"),
         app_commands.Choice(name="create_character", value="create_character"),
         app_commands.Choice(name="rename_character", value="rename_character"),
@@ -28,7 +28,7 @@ class AdminCommands(commands.Cog):
         app_commands.Choice(name="add_tupper", value="add_tupper"),    
         app_commands.Choice(name="remove_tupper", value="remove_tupper")
     ])
-    async def query_logs(
+    async def query_logs( 
         self,
         interaction: discord.Interaction,
         user_mention: discord.Member | None = None,
@@ -37,14 +37,13 @@ class AdminCommands(commands.Cog):
         end_date: str | None = None
     ):
         # Admin check
-        if admin_role_command_text not in [role.name for role in interaction.user.roles]:
+        if admin_role_command_text not in [role.name for role in interaction.user.roles]: # admin_role_command_text is in secret.py. The name of the role of the invoking user must be in the list of roles they have.
             return await interaction.response.send_message(
                 "You do not have permission to use this command."
             )
         
-        await interaction.response.defer()
+        await interaction.response.defer() # stops discord from assuming the command failed in case it takes a while (which may be the case depending on the amount of rows returned from the database)
         discord_id = interaction.user.id
-
         conn, cursor = return_db_connection()
         try:
             audit = AuditLogging(discord_id, cursor)
@@ -69,10 +68,5 @@ class AdminCommands(commands.Cog):
 
 async def setup(bot):
    await bot.add_cog(AdminCommands(bot))
-
-
-async def setup(bot):
-   await bot.add_cog(AdminCommands(bot))
-
 
 

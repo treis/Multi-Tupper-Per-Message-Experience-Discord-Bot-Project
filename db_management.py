@@ -4,12 +4,6 @@ class Connection:
         self.discord_id = discord_id
         self.cursor = cursor
 
-# class Admin(Connection): 
-#    """Class that represents a connection to the databse for use in admin permissions manipulation."""
-#    def add_admin_role(): 
-
-# dictionary to help calculate xp value
-
 level_mults = {
             0: 1.0,
             1: 1.0,           # Level 1 → 2
@@ -34,6 +28,7 @@ level_mults = {
 }
 
 # xppw = xppw per word, falloff = 1
+
 xppw = 1
 falloff = 1
 
@@ -42,13 +37,14 @@ class AuditLogging(Connection):
         super().__init__(discord_id, cursor)
 
     def create_log(self, discord_id, command_type, command_message):
+        """Creates a log for a command given discord_id, command_type, and command_message."""
         self.cursor.execute(
             "INSERT INTO logs (discord_id, command_type, command_message) VALUES (?, ?, ?)",
             (discord_id, command_type, command_message)
         )
         self.conn.commit()
 
-    async def get_logs(self, discord_id=None, command_type=None, start_date=None, end_date=None):
+    async def get_logs(self, discord_id=None, command_type=None, start_date=None, end_date=None): # reference admin_cog.py query_logs command
         query = "SELECT discord_id, command_type, command_message, date FROM logs WHERE 1=1"
         params = []
 
@@ -72,7 +68,8 @@ class AuditLogging(Connection):
         return logs
 
 class Player(Connection):
-    def get_owned_character(self, character_name): # check to make sure other players can't edit characters they do not own
+    def get_owned_character(self, character_name): # function that is occasionally used to make sure that a player owns a character, usually to stop other players from deleting others' tuppers and characters
+        """Checks if a discord_id owns a character."""
         self.cursor.execute(
             "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
             (character_name, self.discord_id)
@@ -80,7 +77,7 @@ class Player(Connection):
         row = self.cursor.fetchone()
         return row[0] if row else None
 
-    def register_player(self, discord_username):
+    def register_player(self, discord_username): # reference player_cog.py /register_me command 
         """Registers a player."""
         self.cursor.execute('INSERT INTO players (discord_id) VALUES (?)', (self.discord_id,))
         return f"Player {self.discord_id} ({discord_username}) has been added to the database."
@@ -124,8 +121,8 @@ class Player(Connection):
         return return_message
 
 class Character(Connection):
-
-    def get_owned_character(self, name):
+    def get_owned_character(self, name: str):
+        """Checks if a discord_id owns a character. Functionally similar to Player.get_owned_character()"""
         self.cursor.execute(
             "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
             (name, self.discord_id)
@@ -141,16 +138,18 @@ class Character(Connection):
         return f"Character named {character_name} has been added to the database."
     
     def remove_xp(self, character_name: str, xp: int, discord_id: int) -> str: 
+        """Removes xp from a character by name and discord_id. Not allowed to put xp below 0."""
         self.cursor.execute('''UPDATE characters
-                            SET xp = MAX(xp - ?, 0)
+                            SET xp = MAX(xp - ?, 0) 
                             WHERE name = ? AND discord_id = ?''', (xp, character_name, discord_id))
 
-        if self.cursor.rowcount == 0:
+        if self.cursor.rowcount == 0: 
             return f"No character named {character_name} found." # no result for name and discord_id
 
         return f"Character named {character_name} has had {xp} removed from their total. Can check new total with my_characters."
     
     def set_level(self, character_name: str, level: int, discord_id: int) -> str:
+        """Set level of character given name, desired level (max 20 - reinforced in database schema), and discord_id."""
         self.cursor.execute('''UPDATE characters
                             SET level = ?
                             WHERE name = ? AND discord_id = ?''', (level, character_name, discord_id))
@@ -161,6 +160,7 @@ class Character(Connection):
         return f"Character named {character_name} has had their level set to {level}."
     
     def delete_character(self, character_name: str, discord_id: int): 
+        """Delete character given character_name and discord_id."""
         self.cursor.execute('''
         DELETE FROM characters
         WHERE name = ? AND discord_id = ?
@@ -172,6 +172,7 @@ class Character(Connection):
         return f"Character named {character_name} has been deleted."
     
     def rename_character (self, character_name, new_character_name): 
+        """Rename character given character name and new character name."""
         self.cursor.execute('''
             UPDATE characters
             SET name = ?
@@ -181,13 +182,15 @@ class Character(Connection):
         return f"{character_name} has been renamed to {new_character_name}."
 
 class Tupper(Connection):
-    def verify_ownership(self, character_id): # check that player owns character they are trying to edit tuppers of
-        self.cursor.execute(
-            "SELECT character_id FROM characters WHERE character_id = ? AND discord_id = ?",
-            (character_id, self.discord_id)
-        )
-        return self.cursor.fetchone() is not None
-
+    def tupper_belongs_to_player(self, tupper_bracket):
+        """Verify if tupper belongs to player."""
+        self.cursor.execute('''
+        SELECT t.bracket
+        FROM tupper_brackets t
+        JOIN characters c ON t.character_id = c.character_id
+        WHERE t.bracket = ? AND c.discord_id = ?
+        ''', (tupper_bracket, self.discord_id))
+        return self.cursor.fetchone() is not None  # True if tupper belongs to player
     def register_tupper(self, bracket, character_id):
         """Register a tupper bracket. Brackets may not be re-used across a player."""
         self.cursor.execute('INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)', (bracket, character_id, self.discord_id))
@@ -204,8 +207,8 @@ class Tupper(Connection):
 
         return f"Tupper {bracket} deleted."
 
-    def add_xp_by_bracket(self, word_len, bracket):
-        # Fetch character level from database
+    def add_xp_by_bracket(self, word_len: int, bracket):
+        """Fetch character level from database given word length and tupper bracket."""
         self.cursor.execute('''
             SELECT c.level, c.character_id
             FROM characters c
@@ -230,12 +233,3 @@ class Tupper(Connection):
         ''', (round(rpxp_raw, 1), character_id))
 
         return f"{round(rpxp_raw,1)} XP added to character with tupper {bracket}."
-    
-    def tupper_belongs_to_player(self, tupper_bracket):
-        self.cursor.execute('''
-        SELECT t.bracket
-        FROM tupper_brackets t
-        JOIN characters c ON t.character_id = c.character_id
-        WHERE t.bracket = ? AND c.discord_id = ?
-        ''', (tupper_bracket, self.discord_id))
-        return self.cursor.fetchone() is not None  # True if tupper belongs to player

@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 from embed import EmbedWrapper
-from decorators import log_command
+from log_command import log_command
 
 class PlayerCommands(commands.Cog):
     def __init__(self, bot):
@@ -35,8 +35,7 @@ class PlayerCommands(commands.Cog):
                 f"{success_flag} to see characters of {discord_id}."
             )
             conn.close()
-            
-
+    
     @app_commands.command(name='register_me', description="Adds you to the database so you can use other functions of the bot.")
     @app_commands.guilds(GUILD_ID)
     async def register_player(self, interaction: discord.Interaction):
