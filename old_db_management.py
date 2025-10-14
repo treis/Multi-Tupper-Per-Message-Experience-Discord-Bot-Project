@@ -1,10 +1,8 @@
-import aiosqlite
-
 class Connection:
     """Class that represents a connection to the database, for use in character and player database manipulation."""
-    def __init__(self, discord_id : int, conn: aiosqlite.Connection):
+    def __init__(self, discord_id : int, cursor):
         self.discord_id = discord_id
-        self.conn = conn
+        self.cursor = cursor
 
 # dictionary that stores multiplication based on level 
 
@@ -37,11 +35,16 @@ xppw = 1
 falloff = 1
 
 class AuditLogging(Connection):
-    async def create_log(self, discord_id, command_type, command_message):
+    def __init__(self, discord_id: int, cursor):
+        super().__init__(discord_id, cursor)
+
+    def create_log(self, discord_id, command_type, command_message):
         """Creates a log for a command given discord_id, command_type, and command_message."""
-        async with self.conn.execute( "INSERT INTO logs (discord_id, command_type, command_message) VALUES (?, ?, ?)",
-            (discord_id, command_type, command_message)):
-            await self.conn.commit()
+        self.cursor.execute(
+            "INSERT INTO logs (discord_id, command_type, command_message) VALUES (?, ?, ?)",
+            (discord_id, command_type, command_message)
+        )
+        self.conn.commit()
 
     async def get_logs(self, discord_id=None, command_type=None, start_date=None, end_date=None): # reference admin_cog.py query_logs command
         query = "SELECT discord_id, command_type, command_message, date FROM logs WHERE 1=1"
@@ -60,43 +63,42 @@ class AuditLogging(Connection):
             query += " AND date <= ?"
             params.append(end_date)
 
-        async with self.conn.execute(query, tuple(params)) as cursor:
-            rows = await cursor.fetchall()
+        self.cursor.execute(query, tuple(params))
+        rows = self.cursor.fetchall()
 
         logs = [f"<@{r[0]}> {r[2]} - Date **{r[3]}**" for r in rows]
         return logs
 
 class Player(Connection):
-    async def get_owned_character(self, character_name): # function that is occasionally used to make sure that a player owns a character, usually to stop other players from deleting others' tuppers and characters
+    def get_owned_character(self, character_name): # function that is occasionally used to make sure that a player owns a character, usually to stop other players from deleting others' tuppers and characters
         """Checks if a discord_id owns a character."""
-        async with self.conn.execute(
+        self.cursor.execute(
             "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
             (character_name, self.discord_id)
-        ) as cursor:
-            row = await cursor.fetchone()
+        )
+        row = self.cursor.fetchone()
         return row[0] if row else None
 
-    async def register_player(self, discord_username): # reference player_cog.py /register_me command 
+    def register_player(self, discord_username): # reference player_cog.py /register_me command 
         """Registers a player."""
-        async with self.conn.execute('INSERT INTO players (discord_id) VALUES (?)', (self.discord_id,)):
-            await self.conn.commit()
+        self.cursor.execute('INSERT INTO players (discord_id) VALUES (?)', (self.discord_id,))
         return f"Player {self.discord_id} ({discord_username}) has been added to the database."
 
-    async def see_my_characters(self) -> str:
+    def see_my_characters(self) -> str:
         """Displays character list with level, XP, and tupper brackets by discord_id."""
 
         # Get all characters for this player along with their level and XP
-        async with self.conn.execute('SELECT name, character_id, level, xp FROM characters WHERE discord_id = ?', (self.discord_id,)) as cursor:
-            all_characters = await self.conn.fetchall()  # list of tuples (name, character_id, level, xp)
+        self.cursor.execute('SELECT name, character_id, level, xp FROM characters WHERE discord_id = ?', (self.discord_id,))
+        all_characters = self.cursor.fetchall()  # list of tuples (name, character_id, level, xp)
 
         # Get all tupper brackets for this player
-        async with self.conn.execute('''
+        self.cursor.execute('''
             SELECT characters.name, tupper_brackets.bracket
             FROM characters
             JOIN tupper_brackets ON tupper_brackets.character_id = characters.character_id
             WHERE characters.discord_id = ?
-        ''', (self.discord_id,)) as cursor:
-            results = await self.conn.fetchall()  # list of tuples (name, bracket)
+        ''', (self.discord_id,))
+        results = self.cursor.fetchall()  # list of tuples (name, bracket)
 
         # Build dictionary of character -> brackets
         characters_with_tuppers = {}
@@ -121,106 +123,102 @@ class Player(Connection):
         return return_message
 
 class Character(Connection):
-    async def get_owned_character(self, name: str):
+    def get_owned_character(self, name: str):
         """Checks if a discord_id owns a character. Functionally similar to Player.get_owned_character()"""
-        async with self.conn.execute(
+        self.cursor.execute(
             "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
-            (name, self.discord_id)) as cursor:
-            row = await cursor.fetchone()
+            (name, self.discord_id)
+        )
+        row = self.cursor.fetchone()
         if not row:
             return None
         return row[0]
 
-    async def register_character(self, discord_id, character_name) -> str:
+    def register_character(self, discord_id, character_name) -> str:
         """Registers a character."""
-        async with self.conn.execute('INSERT INTO characters (discord_id, name) VALUES (?, ?)', (discord_id, character_name)):
-            await self.conn.commit()
+        self.cursor.execute('INSERT INTO characters (discord_id, name) VALUES (?, ?)', (discord_id, character_name))
         return f"Character named {character_name} has been added to the database."
     
-    async def remove_xp(self, character_name: str, xp: int, discord_id: int) -> str: 
+    def remove_xp(self, character_name: str, xp: int, discord_id: int) -> str: 
         """Removes xp from a character by name and discord_id. Not allowed to put xp below 0."""
-        async with self.conn.execute('''UPDATE characters
+        self.cursor.execute('''UPDATE characters
                             SET xp = MAX(xp - ?, 0) 
-                            WHERE name = ? AND discord_id = ?''', (xp, character_name, discord_id)) as cursor:
-            await self.conn.commit()
-            if cursor.rowcount == 0: 
-                return f"No character named {character_name} found." # no result for name and discord_id
+                            WHERE name = ? AND discord_id = ?''', (xp, character_name, discord_id))
+
+        if self.cursor.rowcount == 0: 
+            return f"No character named {character_name} found." # no result for name and discord_id
+
         return f"Character named {character_name} has had {xp} removed from their total. Can check new total with my_characters."
     
-    async def set_level(self, character_name: str, level: int, discord_id: int) -> str:
+    def set_level(self, character_name: str, level: int, discord_id: int) -> str:
         """Set level of character given name, desired level (max 20 - reinforced in database schema), and discord_id."""
-        async with self.conn.execute('''UPDATE characters
+        self.cursor.execute('''UPDATE characters
                             SET level = ?
-                            WHERE name = ? AND discord_id = ?''', (level, character_name, discord_id)) as cursor:
-            await self.conn.commit()
-            if cursor.rowcount == 0:
-                return f"No character named {character_name} found." # no result for name and discord_id
+                            WHERE name = ? AND discord_id = ?''', (level, character_name, discord_id))
+        
+        if self.cursor.rowcount == 0:
+            return f"No character named {character_name} found." # no result for name and discord_id
 
         return f"Character named {character_name} has had their level set to {level}."
     
-    async def delete_character(self, character_name: str, discord_id: int): 
+    def delete_character(self, character_name: str, discord_id: int): 
         """Delete character given character_name and discord_id."""
-        async with self.conn.execute('''
+        self.cursor.execute('''
         DELETE FROM characters
         WHERE name = ? AND discord_id = ?
-        ''', (character_name, discord_id)) as cursor:
-            await self.conn.commit()
-            if cursor.rowcount == 0:
-                return f"No character named {character_name} found." # no result for name and discord_id
+        ''', (character_name, discord_id))
+
+        if self.cursor.rowcount == 0:
+            return f"No character named {character_name} found." # no result for name and discord_id
         
         return f"Character named {character_name} has been deleted."
     
-    async def rename_character (self, character_name, new_character_name): 
+    def rename_character (self, character_name, new_character_name): 
         """Rename character given character name and new character name."""
-        async with self.conn.execute('''
+        self.cursor.execute('''
             UPDATE characters
             SET name = ?
             WHERE name = ?
-        ''', (new_character_name, character_name)) as cursor:
-            await self.conn.commit()
+        ''', (new_character_name, character_name))
+
         return f"{character_name} has been renamed to {new_character_name}."
 
 class Tupper(Connection):
-    async def tupper_belongs_to_player(self, tupper_bracket):
+    def tupper_belongs_to_player(self, tupper_bracket):
         """Verify if tupper belongs to player."""
-        async with self.conn.execute('''
+        self.cursor.execute('''
         SELECT t.bracket
         FROM tupper_brackets t
         JOIN characters c ON t.character_id = c.character_id
         WHERE t.bracket = ? AND c.discord_id = ?
-        ''', (tupper_bracket, self.discord_id)) as cursor:
-            row = await cursor.fetchone()
-        return row is not None  # True if tupper belongs to player
-    
-    async def register_tupper(self, bracket, character_id):
+        ''', (tupper_bracket, self.discord_id))
+        return self.cursor.fetchone() is not None  # True if tupper belongs to player
+    def register_tupper(self, bracket, character_id):
         """Register a tupper bracket. Brackets may not be re-used across a player."""
-        async with self.conn.execute('INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)', (bracket, character_id, self.discord_id)):
-            await self.conn.commit()
-        async with self.conn.execute('SELECT name FROM characters WHERE character_id = ?', (character_id,)) as cursor:
-            character_name = (await cursor.fetchall())[0][0]
+        self.cursor.execute('INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)', (bracket, character_id, self.discord_id))
+        self.cursor.execute('SELECT name FROM characters WHERE character_id = ?', (character_id,))
+        character_name = self.cursor.fetchall()[0][0]
         return bracket, character_name
 
-    async def delete_tupper(self, bracket):
+    def delete_tupper(self, bracket):
         """Delete a tupper bracket."""
-        async with self.conn.execute('''
+        self.cursor.execute('''
             DELETE FROM tupper_brackets
             WHERE discord_id = ? AND bracket = ?
-        ''', (self.discord_id, bracket)) as cursor:
-            await self.conn.commit()
-            if cursor.rowcount == 0:
-                return f"No tupper {bracket} found."
+        ''', (self.discord_id, bracket))
+
         return f"Tupper {bracket} deleted."
 
-    async def add_xp_by_bracket(self, word_len: int, bracket):
+    def add_xp_by_bracket(self, word_len: int, bracket):
         """Fetch character level from database given word length and tupper bracket."""
-        async with self.conn.execute('''
+        self.cursor.execute('''
             SELECT c.level, c.character_id
             FROM characters c
             JOIN tupper_brackets t ON c.character_id = t.character_id
             WHERE t.bracket = ? AND t.discord_id = ?
-        ''', (bracket, self.discord_id)) as cursor:
-            result = await cursor.fetchone()
+        ''', (bracket, self.discord_id))
 
+        result = self.cursor.fetchone()
         if not result:
             return f"No character found for tupper {bracket}."
 
@@ -230,12 +228,10 @@ class Tupper(Connection):
         rpxp_raw = (word_len * xppw * level_mults[level - 1] / 6) * ((100 - falloff * (level - 3)) / 100) # formula used to calculate XP
 
         # Add XP to the character
-        async with self.conn.execute('''
+        self.cursor.execute('''
             UPDATE characters
             SET xp = xp + ?
             WHERE character_id = ?
-        ''', (round(rpxp_raw, 1), character_id)) as cursor:
-            
-            await self.conn.commit()
+        ''', (round(rpxp_raw, 1), character_id))
 
         return f"{round(rpxp_raw,1)} XP added to character with tupper {bracket}."

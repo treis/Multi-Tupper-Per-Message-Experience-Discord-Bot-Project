@@ -3,7 +3,7 @@ from discord.ext import commands
 import os
 from secret import bot_token
 from secret import guild_id
-import aiosqlite
+import sqlite3
 from create_db import test_delete_db, create_db
 import asyncio
 from old_db_management import Tupper
@@ -13,9 +13,10 @@ if os.path.exists('guild.db'):
     test_delete_db()  # delete database on re-run. Uncomment this and invite catastrophe.
     create_db()       # create db
 
-async def return_db_connection(): # helper function that is re-used across the program to generate connections for the various commands (see cogs folder)
-    conn = await aiosqlite.connect('guild.db', check_same_thread=False)
-    return conn # cursor is used to execute commands, conn mainly exists past this point to be closed manually throughout the cog files
+def return_db_connection(): # helper function that is re-used across the program to generate connections for the various commands (see cogs folder)
+    conn = sqlite3.connect('guild.db', check_same_thread=False)
+    cursor = conn.cursor()  # create database connections
+    return conn, cursor # cursor is used to execute commands, conn mainly exists past this point to be closed manually throughout the cog files
 
 ### Bot/
 
@@ -39,12 +40,12 @@ async def on_message(message): # executes every message
     if message.author == bot.user: # if bot sends a command, don't do anything
         return
     
-    conn = await return_db_connection() 
+    conn, cursor = return_db_connection() 
     word_count = len(message.content.split())
     tupper_try = message.content.split(":", 1)[0] + ":" # takes the tupper at the beginning of the string 
 
     try: # try to 
-        tupper = Tupper(message.author.id) # make a Tupper object, which subclasses from a Connection (requires discord id and cursor) to the sq-lite server that can run specific commands, querying by discord id
+        tupper = Tupper(message.author.id, cursor) # make a Tupper object, which subclasses from a Connection (requires discord id and cursor) to the sq-lite server that can run specific commands, querying by discord id
         tupper.add_xp_by_bracket(word_count, tupper_try) # run a Tupper object command that adds XP based on word count and the tupper
         conn.commit()
 

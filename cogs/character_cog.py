@@ -20,7 +20,6 @@ class CharacterCommands(commands.Cog):
             success_flag = 'failed'
             try: 
                 message = character.register_character(discord_id, name)
-                conn.commit()
                 await interaction.response.send_message(message)
                 success_flag = 'succeeded'
             except sqlite3.IntegrityError as e:
@@ -38,7 +37,6 @@ class CharacterCommands(commands.Cog):
                     'create_character',
                     f"{success_flag} to create character {name}."
                 )
-                conn.close()
 
     @app_commands.command(name='rename_character', description="Renames a character")  
     @app_commands.guilds(GUILD_ID)
@@ -54,7 +52,6 @@ class CharacterCommands(commands.Cog):
             return
         try: 
             message = character.rename_character(character_name, new_character_name)
-            conn.commit()
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
         except Exception as e: 
@@ -69,14 +66,13 @@ class CharacterCommands(commands.Cog):
                     'rename_character',
                     f"{success_flag} to rename {character_name} to {new_character_name}."
                 )
-                conn.close()
 
     @app_commands.command(name='delete_character', description="Deletes a character") 
     @app_commands.guilds(GUILD_ID)
     async def delete_character(self, interaction: discord.Interaction, character_name: str):
-        conn, cursor = return_db_connection()
+        conn = await return_db_connection()
         discord_id = interaction.user.id
-        character = Character(discord_id, cursor)
+        character = Character(discord_id, conn)
         character_id = character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
@@ -84,7 +80,6 @@ class CharacterCommands(commands.Cog):
             return
         try: 
             message = character.delete_character(character_name, discord_id)
-            conn.commit()
             await interaction.response.send_message(message)
         except Exception as e: 
             conn.rollback()
@@ -98,14 +93,13 @@ class CharacterCommands(commands.Cog):
                     'delete_character',
                     f"{success_flag} to delete {character_name}."
                 )
-                conn.close()
 
     @app_commands.command(name='set_level_of_character', description="Sets character level") 
     @app_commands.guilds(GUILD_ID)
     async def set_level_of_character(self, interaction: discord.Interaction, character_name: str, level: str):
-        conn, cursor = return_db_connection()
+        conn = await return_db_connection()
         discord_id = interaction.user.id
-        character = Character(discord_id, cursor)
+        character = Character(discord_id, conn)
         character_id = character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
@@ -136,14 +130,13 @@ class CharacterCommands(commands.Cog):
                     'set_level_of_character',
                     f"{success_flag} to set level of {character_name} to {level}."
                 )
-                conn.close()
 
     @app_commands.command(name='remove_xp_from_character', description="Removes XP from a character")  
     @app_commands.guilds(GUILD_ID)
     async def remove_xp_from_character(self, interaction: discord.Interaction, character_name: str, xp: str):
-        conn, cursor = return_db_connection()
+        conn = await return_db_connection()
         discord_id = interaction.user.id
-        character = Character(discord_id, cursor)
+        character = Character(discord_id, conn)
         character_id = character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
@@ -159,7 +152,6 @@ class CharacterCommands(commands.Cog):
             return
         try:
             message = character.remove_xp(character_name, xp_int, discord_id)
-            conn.commit()
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
         except Exception as e: 
@@ -169,12 +161,11 @@ class CharacterCommands(commands.Cog):
             # Call the helper to create a log
                 log_command(
                     conn,
-                    cursor,
+                    None,
                     discord_id,
                     'remove_xp',
-                    f"{success_flag} to set level of {character_name} to {level}."
+                    f"{success_flag} to remove {xp} from {character_name}."
                 )
-                conn.close()
 
 async def setup(bot):
     await bot.add_cog(CharacterCommands(bot))  # Cog setup
