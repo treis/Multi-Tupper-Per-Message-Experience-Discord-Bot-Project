@@ -67,9 +67,9 @@ class AuditLogging(Connection):
 
         self.cursor.execute(query, tuple(params))
         rows = self.cursor.fetchall()
-        logs = [f"{r[0]} | {r[1]} | {r[2]} | {r[3]}" for r in rows]
-        return logs
 
+        logs = [f"<@{r[0]}> {r[2]} - Date **{r[3]}**" for r in rows]
+        return logs
 
 class Player(Connection):
     def get_owned_character(self, character_name): # check to make sure other players can't edit characters they do not own
@@ -181,7 +181,6 @@ class Character(Connection):
         return f"{character_name} has been renamed to {new_character_name}."
 
 class Tupper(Connection):
-
     def verify_ownership(self, character_id): # check that player owns character they are trying to edit tuppers of
         self.cursor.execute(
             "SELECT character_id FROM characters WHERE character_id = ? AND discord_id = ?",

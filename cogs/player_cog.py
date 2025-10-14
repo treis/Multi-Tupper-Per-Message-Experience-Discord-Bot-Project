@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 from embed import EmbedWrapper
+from decorators import log_command
 
 class PlayerCommands(commands.Cog):
     def __init__(self, bot):
@@ -14,6 +15,7 @@ class PlayerCommands(commands.Cog):
     async def see_my_characters(self, interaction: discord.Interaction):
         conn, cursor = return_db_connection()
         discord_id = interaction.user.id
+        success_flag = 'failed'
         try:
             player = Player(discord_id, cursor)
             message = player.see_my_characters()
@@ -21,10 +23,19 @@ class PlayerCommands(commands.Cog):
             command_embed_instance.add_field(name="Command Output for SeeMyCharacters", value=f"Success! \n\n {message}")
             conn.commit()
             await interaction.response.send_message(embed=command_embed_instance)
+            success_flag = 'succeeded'
         except Exception as e:
             await interaction.response.send_message(f"Error retrieving characters:\n{e}")
-        finally: 
+        finally:
+            log_command(
+                conn,
+                cursor,
+                discord_id,
+                'see_my_characters',
+                f"{success_flag} to see characters of {discord_id}."
+            )
             conn.close()
+            
 
     @app_commands.command(name='register_me', description="Adds you to the database so you can use other functions of the bot.")
     @app_commands.guilds(GUILD_ID)
@@ -32,14 +43,23 @@ class PlayerCommands(commands.Cog):
         conn, cursor = return_db_connection()
         discord_id = interaction.user.id
         player = Player(discord_id, cursor)
+        success_flag = 'failed'
         try: 
             success_message = player.register_player(interaction.user.name)
             conn.commit()
             await interaction.response.send_message(success_message)
+            success_flag = 'succeeded'
         except Exception as e: 
             await interaction.response.send_message(f"You are already in the database, {interaction.user.name}\n{e}")
             conn.rollback()
-        finally: 
+        finally:
+            log_command(
+                conn,
+                cursor,
+                discord_id,
+                'register_player',
+                f"{success_flag} to register themselves as a player."
+            )
             conn.close()
 
 async def setup(bot): 

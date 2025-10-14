@@ -4,17 +4,8 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 from secret import admin_role_command_text
-
-class AdminCommands(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
 from db_management import AuditLogging
-import discord
-from discord import app_commands
-from discord.ext import commands
-from nbot import return_db_connection, GUILD_ID
-from secret import admin_role_command_text
+import io
 
 class AdminCommands(commands.Cog):
     def __init__(self, bot):
@@ -25,6 +16,18 @@ class AdminCommands(commands.Cog):
         description="Returns logs by optional parameters, only usable by admins."
     )
     @app_commands.guilds(GUILD_ID)
+    @app_commands.choices(command_type=[
+        app_commands.Choice(name="register_player", value="register_player"),
+        app_commands.Choice(name="create_character", value="create_character"),
+        app_commands.Choice(name="rename_character", value="rename_character"),
+        app_commands.Choice(name="delete_character", value="delete_character"),
+        app_commands.Choice(name="rename_character", value="rename_character"),
+        app_commands.Choice(name="remove_xp", value="remove_xp"),
+        app_commands.Choice(name="set_level_of_character", value="set_level_of_character"),       
+        app_commands.Choice(name="see_my_characters", value="see_my_characters"),
+        app_commands.Choice(name="add_tupper", value="add_tupper"),    
+        app_commands.Choice(name="remove_tupper", value="remove_tupper")
+    ])
     async def query_logs(
         self,
         interaction: discord.Interaction,
@@ -53,8 +56,12 @@ class AdminCommands(commands.Cog):
                 end_date=end_date
             )
 
+            text = "\n".join(logs)
+            file = discord.File(io.BytesIO(text.encode()), filename="output.txt")
+
             if logs:
-                await interaction.followup.send("\n".join(logs))
+                await interaction.followup.send("Here are your logs:", file=file)
+
             else:
                 await interaction.followup.send("No logs found.")
         finally:

@@ -7,3 +7,4 @@ def log_command(conn, cursor, discord_id, command_type, command_message):
         audit.create_log(discord_id, command_type, command_message)
     except Exception as e:
         print(f"Failed to create log: {e}")
+

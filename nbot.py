@@ -6,8 +6,8 @@ from secret import bot_token
 from secret import guild_id
 import sqlite3
 from create_db import test_delete_db, create_db
-from db_management import Tupper
 import asyncio
+from db_management import Tupper
 
 ### Database
 
