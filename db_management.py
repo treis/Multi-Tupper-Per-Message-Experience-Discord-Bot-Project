@@ -4,6 +4,8 @@ class Connection:
         self.discord_id = discord_id
         self.cursor = cursor
 
+# dictionary that stores multiplication based on level 
+
 level_mults = {
             0: 1.0,
             1: 1.0,           # Level 1 → 2
@@ -27,7 +29,7 @@ level_mults = {
             19: 162.8197       # Level 19 → 20
 }
 
-# xppw = xppw per word, falloff = 1
+# variables used in calculating a base value before multiplication with the above dictionary. See Tupper.add_xp_bracket() for formula used for calculating XP.
 
 xppw = 1
 falloff = 1
@@ -223,7 +225,7 @@ class Tupper(Connection):
         level, character_id = result
 
         # Calculate XP
-        rpxp_raw = (word_len * xppw * level_mults[level - 1] / 6) * ((100 - falloff * (level - 3)) / 100)
+        rpxp_raw = (word_len * xppw * level_mults[level - 1] / 6) * ((100 - falloff * (level - 3)) / 100) # formula used to calculate XP
 
         # Add XP to the character
         self.cursor.execute('''

@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 import os
-from os import path
 from secret import bot_token
 from secret import guild_id
 import sqlite3
@@ -9,9 +8,9 @@ from create_db import test_delete_db, create_db
 import asyncio
 from db_management import Tupper
 
-# Create database if not exist, and set up connection
+# Create databas guild.db if it does not already exist, and set up connection
 if os.path.exists('guild.db'):
-    test_delete_db()  # delete database on re-run (DEBUGGING)
+    test_delete_db()  # delete database on re-run. Uncomment this and invite catastrophe.
     create_db()       # create db
 
 def return_db_connection(): # helper function that is re-used across the program to generate connections for the various commands (see cogs folder)
@@ -19,7 +18,7 @@ def return_db_connection(): # helper function that is re-used across the program
     cursor = conn.cursor()  # create database connections
     return conn, cursor # cursor is used to execute commands, conn mainly exists past this point to be closed manually throughout the cog files
 
-### Bot
+### Bot/
 
 # Set up the bot's intents, guild object, and make sure it can read messages
 intents = discord.Intents.default()
