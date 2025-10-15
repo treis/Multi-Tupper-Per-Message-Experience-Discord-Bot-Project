@@ -32,7 +32,7 @@ class CharacterCommands(commands.Cog):
                 # Call the helper to create a log
                 log_command(
                     conn,
-                    cursor,
+                    None,
                     discord_id,
                     'create_character',
                     f"{success_flag} to create character {name}."
@@ -61,7 +61,7 @@ class CharacterCommands(commands.Cog):
                 # Call the helper to create a log
                 log_command(
                     conn,
-                    cursor,
+                    None,
                     discord_id,
                     'rename_character',
                     f"{success_flag} to rename {character_name} to {new_character_name}."
@@ -88,7 +88,7 @@ class CharacterCommands(commands.Cog):
             # Call the helper to create a log
                 log_command(
                     conn,
-                    cursor,
+                    None,
                     discord_id,
                     'delete_character',
                     f"{success_flag} to delete {character_name}."
@@ -125,7 +125,7 @@ class CharacterCommands(commands.Cog):
             # Call the helper to create a log
                 log_command(
                     conn,
-                    cursor,
+                    None,
                     discord_id,
                     'set_level_of_character',
                     f"{success_flag} to set level of {character_name} to {level}."
