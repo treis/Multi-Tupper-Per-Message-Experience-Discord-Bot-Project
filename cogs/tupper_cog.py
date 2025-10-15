@@ -55,7 +55,7 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
     async def remove_tupper(self, interaction: discord.Interaction, bracket: str):
         conn = await return_db_connection()
         discord_id = interaction.user.id
-        tupper = Tupper(discord_id, cursor)
+        tupper = Tupper(discord_id, conn)
         success_flag = 'failed'
         if not tupper.tupper_belongs_to_player(bracket):
             await interaction.response.send_message("This tupper does not belong to you.")

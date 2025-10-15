@@ -6,7 +6,7 @@ from secret import guild_id
 import aiosqlite
 from create_db import test_delete_db, create_db
 import asyncio
-from old_db_management import Tupper
+from db_management import Tupper
 
 # Create databas guild.db if it does not already exist, and set up connection
 if os.path.exists('guild.db'):
