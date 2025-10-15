@@ -20,7 +20,6 @@ class AdminCommands(commands.Cog):
         app_commands.Choice(name="create_character", value="create_character"),
         app_commands.Choice(name="rename_character", value="rename_character"),
         app_commands.Choice(name="delete_character", value="delete_character"),
-        app_commands.Choice(name="rename_character", value="rename_character"),
         app_commands.Choice(name="remove_xp", value="remove_xp"),
         app_commands.Choice(name="set_level_of_character", value="set_level_of_character"),       
         app_commands.Choice(name="see_my_characters", value="see_my_characters"),

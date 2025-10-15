@@ -5,6 +5,8 @@ from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 import sqlite3
 from log_command import log_command
+from secret import create_success_image, failure_image
+from embed import EmbedWrapper
 
 class CharacterCommands(commands.Cog):
 
@@ -18,16 +20,29 @@ class CharacterCommands(commands.Cog):
             discord_id = interaction.user.id
             character = Character(discord_id, conn)
             success_flag = 'failed'
+            embed = EmbedWrapper().return_base_embed()
+            
             try: 
                 message = await character.register_character(discord_id, name)
-                await interaction.response.send_message(message)
+                embed.set_image(url=create_success_image)
+                embed.add_field(name="Command Output for add_character", value=f"Success! \n\n {message}")
+                await interaction.response.send_message(embed=embed)
                 success_flag = 'succeeded'
+
             except sqlite3.IntegrityError as e:
-                conn.rollback()
-                await interaction.response.send_message(f"Error, character name already in use:\n{e}")
+                message = f"Error, character name already in use:\n{e}"
+                embed.set_image(url=failure_image)
+                embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
+                await conn.rollback()
+                await interaction.response.send_message(embed=embed)
+
             except Exception as e:
-                conn.rollback()
+                message = f"Something unexpected went wrong.\n\n ```{e}```"
+                embed.set_image(url=failure_image)
+                embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
+                await conn.rollback()
                 await interaction.response.send_message(f"Error adding character:\n{e}")
+
             finally: 
                 # Call the helper to create a log
                 await log_command(

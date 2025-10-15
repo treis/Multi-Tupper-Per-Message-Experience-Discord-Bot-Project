@@ -5,6 +5,8 @@ from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 from embed import EmbedWrapper
 from log_command import log_command
+from embed import EmbedWrapper
+from secret import create_success_image, failure_image, see_characters_image
 
 class PlayerCommands(commands.Cog):
     def __init__(self, bot):
@@ -15,16 +17,22 @@ class PlayerCommands(commands.Cog):
     async def see_my_characters(self, interaction: discord.Interaction):
         conn = await return_db_connection()
         discord_id = interaction.user.id
+        player = Player(discord_id, conn)
         success_flag = 'failed'
+        embed = EmbedWrapper().return_base_embed()
         try:
-            player = Player(discord_id, conn)
             message = await player.see_my_characters()
-            command_embed_instance = EmbedWrapper().return_base_embed()
-            command_embed_instance.add_field(name="Command Output for SeeMyCharacters", value=f"Success! \n\n {message}")
-            await interaction.response.send_message(embed=command_embed_instance)
+            embed.set_image(url=see_characters_image)
+            embed.add_field(name="Command Output for my_characters", value=f"Success! \n\n {message}")
+            await interaction.response.send_message(embed=embed)
             success_flag = 'succeeded'
+
         except Exception as e:
-            await interaction.response.send_message(f"Error retrieving characters:\n{e}")
+            message = f"Error retrieving characters:\n{e}"
+            embed.set_thumbnail(url=failure_image)
+            embed.add_field(name="Command Output for my_characters", value=f"Failure. \n\n {message}")
+            await interaction.response.send_message(embed=embed)
+
         finally:
             await log_command(
                 conn,
@@ -41,13 +49,22 @@ class PlayerCommands(commands.Cog):
         discord_id = interaction.user.id
         player = Player(discord_id, conn)
         success_flag = 'failed'
+        embed = EmbedWrapper().return_base_embed()
         try: 
-            success_message = await player.register_player(interaction.user.name)
-            await interaction.response.send_message(success_message)
+            message = await player.register_player(interaction.user.name)
+            embed.set_image(url=create_success_image)
+            embed.add_field(name="Command Output for register_player", value=f"Success! \n\n {message}")
+            await interaction.response.send_message(embed=embed)
             success_flag = 'succeeded'
+
         except Exception as e: 
-            await interaction.response.send_message(f"You are already in the database, {interaction.user.name}\n{e}")
-            conn.rollback()
+            message = f"Either you are already in the database, or something else went wrong: \n\n ```{e}```"
+            embed.set_thumbnail(url=failure_image)
+            embed.add_field(name="Command Output for register_player", value=f"Failure. \n\n {message}")
+            await interaction.response.send_message(embed=embed)
+            success_flag = 'failed'
+            await conn.rollback()
+    
         finally:
             await log_command(
                 conn,

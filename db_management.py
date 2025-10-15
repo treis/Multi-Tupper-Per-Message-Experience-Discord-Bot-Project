@@ -76,10 +76,10 @@ class Player(Connection):
             row = await cursor.fetchone()
         return row[0] if row else None
 
-    async def register_player(self, discord_username): # reference player_cog.py /register_me command 
+    async def register_player(self, discord_username): 
         """Registers a player."""
         async with self.conn.execute('INSERT INTO players (discord_id) VALUES (?)', (self.discord_id,)):
-            await self.conn.commit()
+            await self.conn.commit()  # commit on the connection, not the cursor
         return f"Player {self.discord_id} ({discord_username}) has been added to the database."
 
     async def see_my_characters(self) -> str:
@@ -194,10 +194,18 @@ class Tupper(Connection):
     
     async def register_tupper(self, bracket, character_id):
         """Register a tupper bracket. Brackets may not be re-used across a player."""
-        async with self.conn.execute('INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)', (bracket, character_id, self.discord_id)):
-            await self.conn.commit()
-        async with self.conn.execute('SELECT name FROM characters WHERE character_id = ?', (character_id,)) as cursor:
-            character_name = (await cursor.fetchall())[0][0]
+        await self.conn.execute(
+            'INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)',
+            (bracket, character_id, self.discord_id)
+        )
+        await self.conn.commit()
+
+        # Fetch character name
+        cursor = await self.conn.execute(
+            'SELECT name FROM characters WHERE character_id = ?',
+            (character_id,)
+        )
+        character_name = (await cursor.fetchone())[0]
         return bracket, character_name
 
     async def delete_tupper(self, bracket):
