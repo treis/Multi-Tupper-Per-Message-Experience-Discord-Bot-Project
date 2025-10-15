@@ -38,21 +38,17 @@ async def on_ready(): # executes when the bot comes online
 async def on_message(message): # executes every message
     if message.author == bot.user: # if bot sends a command, don't do anything
         return
-    
     conn = await return_db_connection() 
     word_count = len(message.content.split())
     tupper_try = message.content.split(":", 1)[0] + ":" # takes the tupper at the beginning of the string 
 
     try: # try to 
-        tupper = Tupper(message.author.id) # make a Tupper object, which subclasses from a Connection (requires discord id and cursor) to the sq-lite server that can run specific commands, querying by discord id
-        tupper.add_xp_by_bracket(word_count, tupper_try) # run a Tupper object command that adds XP based on word count and the tupper
-        conn.commit()
+        await Tupper(message.author.id, conn).add_xp_by_bracket(word_count, tupper_try) 
+        # make a Tupper object, which subclasses from a Connection (requires discord id and cursor) to the sq-lite server that can run specific commands, querying by discord id
 
-    except Exception as e: # if anything goes wrong, print the error to console
+    except Exception as e: # if anything goes wrong, print the error to consoles
         print(f"Error in on_message:\n{e}")
         conn.rollback() # un-type sql code that may have been written by the cursor in Tupper.add_xp_by_bracket() method
-    finally:
-        conn.close() # no matter what, close the connection
 
     await bot.process_commands(message) # without this line, none of the other commands that require user input in the cogs will be registered
 

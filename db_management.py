@@ -87,7 +87,7 @@ class Player(Connection):
 
         # Get all characters for this player along with their level and XP
         async with self.conn.execute('SELECT name, character_id, level, xp FROM characters WHERE discord_id = ?', (self.discord_id,)) as cursor:
-            all_characters = await self.conn.fetchall()  # list of tuples (name, character_id, level, xp)
+            all_characters = await cursor.fetchall()  # list of tuples (name, character_id, level, xp)
 
         # Get all tupper brackets for this player
         async with self.conn.execute('''
@@ -96,7 +96,7 @@ class Player(Connection):
             JOIN tupper_brackets ON tupper_brackets.character_id = characters.character_id
             WHERE characters.discord_id = ?
         ''', (self.discord_id,)) as cursor:
-            results = await self.conn.fetchall()  # list of tuples (name, bracket)
+            results = await cursor.fetchall()  # list of tuples (name, bracket)
 
         # Build dictionary of character -> brackets
         characters_with_tuppers = {}

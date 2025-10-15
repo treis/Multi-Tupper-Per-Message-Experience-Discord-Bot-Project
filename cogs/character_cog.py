@@ -14,12 +14,12 @@ class CharacterCommands(commands.Cog):
     @app_commands.guilds(GUILD_ID) 
     async def add_character(self, interaction: discord.Interaction, name: str):
             name = name.lower()
-            conn, cursor = return_db_connection()
+            conn = await return_db_connection()
             discord_id = interaction.user.id
-            character = Character(discord_id, cursor)
+            character = Character(discord_id, conn)
             success_flag = 'failed'
             try: 
-                message = character.register_character(discord_id, name)
+                message = await character.register_character(discord_id, name)
                 await interaction.response.send_message(message)
                 success_flag = 'succeeded'
             except sqlite3.IntegrityError as e:
@@ -30,7 +30,7 @@ class CharacterCommands(commands.Cog):
                 await interaction.response.send_message(f"Error adding character:\n{e}")
             finally: 
                 # Call the helper to create a log
-                log_command(
+                await log_command(
                     conn,
                     None,
                     discord_id,
@@ -41,10 +41,10 @@ class CharacterCommands(commands.Cog):
     @app_commands.command(name='rename_character', description="Renames a character")  
     @app_commands.guilds(GUILD_ID)
     async def rename_character(self, interaction: discord.Interaction, character_name: str, new_character_name: str):
-        conn, cursor = return_db_connection()
+        conn = await return_db_connection()
         discord_id = interaction.user.id
-        character = Character(discord_id, cursor)
-        character_id = character.get_owned_character(character_name)
+        character = Character(discord_id, conn)
+        character_id = await character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
             await interaction.response.send_message("You do not own this character.")
@@ -59,7 +59,7 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(f"Character renaming failed:\n{e}")
         finally:
                 # Call the helper to create a log
-                log_command(
+                await log_command(
                     conn,
                     None,
                     discord_id,
@@ -73,20 +73,20 @@ class CharacterCommands(commands.Cog):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
-        character_id = character.get_owned_character(character_name)
+        character_id = await character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
             await interaction.response.send_message("You do not own this character.")
             return
         try: 
-            message = character.delete_character(character_name, discord_id)
+            message = await character.delete_character(character_name, discord_id)
             await interaction.response.send_message(message)
         except Exception as e: 
             conn.rollback()
             await interaction.response.send_message(f"Character deletion failed:\n{e}")
         finally:
             # Call the helper to create a log
-                log_command(
+                await log_command(
                     conn,
                     None,
                     discord_id,
@@ -100,7 +100,7 @@ class CharacterCommands(commands.Cog):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
-        character_id = character.get_owned_character(character_name)
+        character_id = await character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
             await interaction.response.send_message("You do not own this character.")
@@ -114,7 +114,7 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(f"Invalid input:\n{e}")
             return
         try:
-            character.set_level(character_name, level_int, discord_id)
+            await character.set_level(character_name, level_int, discord_id)
             conn.commit()
             await interaction.response.send_message(f"Character {character_name} level set to {level_int}.")
             success_flag = 'succeeded'
@@ -123,7 +123,7 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(f"Error setting level:\n{e}")
         finally:
             # Call the helper to create a log
-                log_command(
+                await log_command(
                     conn,
                     None,
                     discord_id,
@@ -131,16 +131,16 @@ class CharacterCommands(commands.Cog):
                     f"{success_flag} to set level of {character_name} to {level}."
                 )
 
-    @app_commands.command(name='remove_xp_from_character', description="Removes XP from a character")  
+    @app_commands.command(name='remove_xp_from_character', description="Removes XP from a character name.")  
     @app_commands.guilds(GUILD_ID)
     async def remove_xp_from_character(self, interaction: discord.Interaction, character_name: str, xp: str):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
-        character_id = character.get_owned_character(character_name)
+        character_id = await character.get_owned_character(character_name)
         success_flag = 'failed'
         if not character_id:
-            await interaction.response.send_message("You do not own this character.")
+            await interaction.response.send_message("Please type a character name.  You can check the ones you own with /see_my_characters.")
             return
         try:
             xp_int = int(xp)
@@ -151,7 +151,7 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(f"Invalid XP input:\n{e}")
             return
         try:
-            message = character.remove_xp(character_name, xp_int, discord_id)
+            message = await character.remove_xp(character_name, xp_int, discord_id)
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
         except Exception as e: 
@@ -159,7 +159,7 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(f"Error removing XP:\n{e}")
         finally:
             # Call the helper to create a log
-                log_command(
+                await log_command(
                     conn,
                     None,
                     discord_id,

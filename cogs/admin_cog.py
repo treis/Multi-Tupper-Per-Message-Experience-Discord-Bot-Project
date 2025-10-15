@@ -11,7 +11,7 @@ class AdminCommands(commands.Cog):
         self.bot = bot
 
     @app_commands.command(
-        name='logs_by_date',
+        name='generate_logs',
         description="Returns logs by optional parameters, only usable by admins."
     )
     @app_commands.guilds(GUILD_ID)

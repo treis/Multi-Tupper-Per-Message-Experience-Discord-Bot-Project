@@ -23,13 +23,13 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
             return
         try: 
             async with conn.execute('SELECT character_id FROM characters WHERE name = ?', (character_name,)) as cursor: # check if character is in the database, return if otherwise, tell user character not in database
-                row = await conn.fetchone()
+                row = await cursor.fetchone()
             if not row:
                 await interaction.response.send_message(f"Character info could not be found with the provided name. Please run /add_character, or run /my_characters to see the names of your characters.")
                 return
             character_id = row[0] # sql-lite returns a tuple that represents a row from characters table , the 0th position will be character_id (an integer)
             tupper = Tupper(discord_id, conn)
-            emb_tupper_bracket, emb_character_name = tupper.register_tupper(bracket, character_id)
+            emb_tupper_bracket, emb_character_name = await tupper.register_tupper(bracket, character_id)
             command_embed_instance = EmbedWrapper().return_base_embed() # return embed for purposes of sending a message to the user later on
             command_embed_instance.add_field(
                 name="Command Output for AddTupper", 
@@ -38,11 +38,11 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
             await interaction.response.send_message(embed=command_embed_instance) # send built embed
             success_flag = 'succeeded' # all checks succeeded and the database is updated, so edit success_flag from failed to succeeded
         except Exception as e:
-            conn.rollback() # undo the attempted change 
+            await conn.rollback() # undo the attempted change 
             await interaction.response.send_message(f"Error adding tupper:\n{e}") # one-liner error message to be sent in the same channel that invoked the command 
         finally:
             # build log_coommand to make sure this attempt, 
-            log_command(
+            await log_command(
                 conn,
                 None,
                 discord_id,
@@ -57,22 +57,22 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
         discord_id = interaction.user.id
         tupper = Tupper(discord_id, conn)
         success_flag = 'failed'
-        if not tupper.tupper_belongs_to_player(bracket):
-            await interaction.response.send_message("This tupper does not belong to you.")
+        if not await tupper.tupper_belongs_to_player(bracket):
+            await interaction.response.send_message("This tupper does not belong to you, or, maybe you forgot the colon.")
             return
         valid_brackets = bracket.endswith(':') 
         if not valid_brackets:
             await interaction.response.send_message(f"Make sure that your tupper brackets end with a colon.")
             return
         try: 
-            message = tupper.delete_tupper(bracket)
+            message = await tupper.delete_tupper(bracket)
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
         except Exception as e: 
             conn.rollback()
             await interaction.response.send_message(f"Error removing tupper:\n{e}")
         finally: 
-            log_command(
+            await log_command(
                 conn,
                 None,
                 discord_id,

@@ -4,10 +4,6 @@ import os
 # This file exists to create the database 
 
 def test_delete_db(db_name="guild.db"):
-    """
-    Debugging utility that deletes the database file if it exists.
-    Should be commented out in production.
-    """
     if os.path.exists(db_name):
         os.remove(db_name)
         print(f"Database '{db_name}' deleted successfully.")
@@ -19,13 +15,18 @@ def create_db():
     """Creates the database and tables if they do not exist."""
     conn = sqlite3.connect('guild.db', check_same_thread=False)
     cursor = conn.cursor()
+
+    # Important: enable foreign key support
     conn.execute('PRAGMA foreign_keys = ON')
+
+    # Players table (root reference)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS players (
             discord_id TEXT PRIMARY KEY
         )
     ''')
 
+    # Logs table (kept even if player is deleted)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS logs (
             log_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,9 +35,10 @@ def create_db():
             command_message TEXT NOT NULL,
             date TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (discord_id) REFERENCES players(discord_id)
-                ON DELETE SET NULL
         )
     ''')
+
+    # Characters table (deletes when player is deleted)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS characters (
             character_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,16 +47,18 @@ def create_db():
             name TEXT NOT NULL UNIQUE,
             level INTEGER CHECK (level >= 1 AND level <= 20) DEFAULT 1,
             FOREIGN KEY (discord_id) REFERENCES players(discord_id)
-                ON DELETE RESTRICT
+                ON DELETE CASCADE
         )
     ''')
 
+    # Admins table (untouched by deletes)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admins (
             role_name TEXT NOT NULL DEFAULT 'bot master'
         )
     ''')
 
+    # Tupper brackets (delete when character is deleted)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS tupper_brackets (
             bracket TEXT NOT NULL,
@@ -62,8 +66,7 @@ def create_db():
             discord_id TEXT NOT NULL,
             FOREIGN KEY (character_id) REFERENCES characters(character_id)
                 ON DELETE CASCADE,
-            FOREIGN KEY (discord_id) REFERENCES players(discord_id)
-                ON DELETE RESTRICT,
+            FOREIGN KEY (discord_id) REFERENCES players(discord_id),
             UNIQUE (discord_id, bracket)
         )
     ''')

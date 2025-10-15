@@ -18,7 +18,7 @@ class PlayerCommands(commands.Cog):
         success_flag = 'failed'
         try:
             player = Player(discord_id, conn)
-            message = player.see_my_characters()
+            message = await player.see_my_characters()
             command_embed_instance = EmbedWrapper().return_base_embed()
             command_embed_instance.add_field(name="Command Output for SeeMyCharacters", value=f"Success! \n\n {message}")
             await interaction.response.send_message(embed=command_embed_instance)
@@ -33,7 +33,6 @@ class PlayerCommands(commands.Cog):
                 'see_my_characters',
                 f"{success_flag} to see characters of {discord_id}."
             )
-            conn.close()
     
     @app_commands.command(name='register_me', description="Adds you to the database so you can use other functions of the bot.")
     @app_commands.guilds(GUILD_ID)
