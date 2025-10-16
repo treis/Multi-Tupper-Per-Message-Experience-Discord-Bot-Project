@@ -69,7 +69,8 @@ class AdminCommands(commands.Cog):
             else:
                 await interaction.followup.send("No logs found.")
         except Exception as e:
-            return await interaction.followup.send(f"Error: {e}.")
+            await conn.rollback()
+            await interaction.followup.send(f"Error: {e}.")
 
 async def setup(bot):
    await bot.add_cog(AdminCommands(bot))

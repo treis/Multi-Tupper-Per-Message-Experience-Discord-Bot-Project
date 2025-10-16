@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 import sqlite3
-from log_command import log_command, audit_log
+from log_command import audit_log
 from secret import create_success_image, failure_image
 from embed import EmbedWrapper
 
@@ -20,9 +20,9 @@ class CharacterCommands(commands.Cog):
             conn = await return_db_connection()
             discord_id = interaction.user.id
             character = Character(discord_id, conn)
-            success_flag = 'failed'
+            success_flag = 'fail'
             embed = EmbedWrapper().return_base_embed()
-            command_specific_audit_extension = f"created character named {name}."
+            command_specific_audit_extension = f"create character named {name}."
             
             try: 
                 message = await character.register_character(discord_id, name)
@@ -47,38 +47,39 @@ class CharacterCommands(commands.Cog):
 
     @app_commands.command(name='rename_character', description="Renames a character")  
     @app_commands.guilds(GUILD_ID)
+    @audit_log
     async def rename_character(self, interaction: discord.Interaction, character_name: str, new_character_name: str):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
-        success_flag = 'failed'
+        success_flag = 'fail'
+        command_specific_audit_extension = f"rename character {character_name} to {new_character_name}"
+    
         if not character_id:
             await interaction.response.send_message("You do not own this character.")
-            success_flag = 'failed'
             return
         try: 
             message = character.rename_character(character_name, new_character_name)
             await interaction.response.send_message(message)
-            success_flag = 'succeeded'
-        finally:
-                # Call the helper to create a log
-                await log_command(
-                    conn,
-                    None,
-                    discord_id,
-                    'rename_character',
-                    f"{success_flag} to rename {character_name} to {new_character_name}."
-                )
+            success_flag = 'succeed'
+        except Exception as e:
+             await interaction.response.send_message(e)
+
+        return command_specific_audit_extension, success_flag
+        
 
     @app_commands.command(name='delete_character', description="Deletes a character") 
     @app_commands.guilds(GUILD_ID)
+    @audit_log 
     async def delete_character(self, interaction: discord.Interaction, character_name: str):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
-        success_flag = 'failed'
+        success_flag = 'fail'
+        command_specific_audit_extension = f"delete character {character_name}."
+
         if not character_id:
             await interaction.response.send_message("You do not own this character.")
             return
@@ -87,24 +88,21 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(message)
         except Exception as e: 
             await interaction.response.send_message(f"Character deletion failed:\n{e}")
-        finally:
-            # Call the helper to create a log
-                await log_command(
-                    conn,
-                    None,
-                    discord_id,
-                    'delete_character',
-                    f"{success_flag} to delete {character_name}."
-                )
+
+        return command_specific_audit_extension, success_flag
+
 
     @app_commands.command(name='set_level_of_character', description="Sets character level") 
     @app_commands.guilds(GUILD_ID)
+    @audit_log
     async def set_level_of_character(self, interaction: discord.Interaction, character_name: str, level: str):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
-        success_flag = 'failed'
+        success_flag = 'fail'
+        command_specific_audit_extension = f"set level of {character_name} to {level}."
+
         if not character_id:
             await interaction.response.send_message("You do not own this character.")
             return
@@ -118,29 +116,25 @@ class CharacterCommands(commands.Cog):
             return
         try:
             await character.set_level(character_name, level_int, discord_id)
-            conn.commit()
             await interaction.response.send_message(f"Character {character_name} level set to {level_int}.")
-            success_flag = 'succeeded'
+            success_flag = 'succeed'
         except Exception as e: 
             await interaction.response.send_message(f"Error setting level:\n{e}")
-        finally:
-            # Call the helper to create a log
-                await log_command(
-                    conn,
-                    None,
-                    discord_id,
-                    'set_level_of_character',
-                    f"{success_flag} to set level of {character_name} to {level}."
-                )
+            await conn.rollback()
+            
+            return command_specific_audit_extension, success_flag
 
     @app_commands.command(name='remove_xp_from_character', description="Removes XP from a character name.")  
     @app_commands.guilds(GUILD_ID)
+    @audit_log
     async def remove_xp_from_character(self, interaction: discord.Interaction, character_name: str, xp: str):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
-        success_flag = 'failed'
+        success_flag = 'fail'
+        command_specific_audit_extension = f"remove {xp} from character {character_name}."
+
         if not character_id:
             await interaction.response.send_message("Please type a character name.  You can check the ones you own with /see_my_characters.")
             return
@@ -151,22 +145,18 @@ class CharacterCommands(commands.Cog):
                 return
         except ValueError as e:
             await interaction.response.send_message(f"Invalid XP input:\n{e}")
-            return
+            await conn.rollback()
+
         try:
             message = await character.remove_xp(character_name, xp_int, discord_id)
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
+            
         except Exception as e: 
             await interaction.response.send_message(f"Error removing XP:\n{e}")
-        finally:
-            # Call the helper to create a log
-                await log_command(
-                    conn,
-                    None,
-                    discord_id,
-                    'remove_xp',
-                    f"{success_flag} to remove {xp} from {character_name}."
-                )
+            await conn.rollback()
+
+        return command_specific_audit_extension, success_flag
 
 async def setup(bot):
     await bot.add_cog(CharacterCommands(bot))  # Cog setup

@@ -36,6 +36,7 @@ class PlayerCommands(commands.Cog):
             embed.set_thumbnail(url=failure_image)
             embed.add_field(name="Command Output for my_characters", value=f"Failure. \n\n {message}")
             await interaction.response.send_message(embed=embed)
+            await conn.rollback()
 
         return command_specific_audit_extension, success_flag
     
@@ -63,6 +64,7 @@ class PlayerCommands(commands.Cog):
             embed.set_thumbnail(url=failure_image)
             embed.add_field(name="Command Output for register_player", value=f"Failure. \n\n {message}")
             await interaction.response.send_message(embed=embed)
+            await conn.rollback()
         
         return command_specific_audit_extension, success_flag
 

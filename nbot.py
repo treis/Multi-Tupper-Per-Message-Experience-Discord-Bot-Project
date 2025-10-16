@@ -17,7 +17,7 @@ async def return_db_connection(): # helper function that is re-used across the p
     conn = await aiosqlite.connect('guild.db', check_same_thread=False)
     return conn # cursor is used to execute commands, conn mainly exists past this point to be closed manually throughout the cog files
 
-### Bot/
+### Bot
 
 # Set up the bot's intents, guild object, and make sure it can read messages
 intents = discord.Intents.default()
@@ -42,13 +42,13 @@ async def on_message(message): # executes every message
     word_count = len(message.content.split())
     tupper_try = message.content.split(":", 1)[0] + ":" # takes the tupper at the beginning of the string 
 
-    try: # try to 
+    try:
         await Tupper(message.author.id, conn).add_xp_by_bracket(word_count, tupper_try) 
         # make a Tupper object, which subclasses from a Connection (requires discord id and cursor) to the sq-lite server that can run specific commands, querying by discord id
 
     except Exception as e: # if anything goes wrong, print the error to consoles
         print(f"Error in on_message:\n{e}")
-        conn.rollback() # un-type sql code that may have been written by the cursor in Tupper.add_xp_by_bracket() method
+        await conn.rollback() # un-type sql code that may have been written by the cursor in Tupper.add_xp_by_bracket() method
 
     await bot.process_commands(message) # without this line, none of the other commands that require user input in the cogs will be registered
 
