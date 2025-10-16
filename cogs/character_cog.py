@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 import sqlite3
-from log_command import log_command
+from log_command import log_command, audit_log
 from secret import create_success_image, failure_image
 from embed import EmbedWrapper
 
@@ -14,6 +14,7 @@ class CharacterCommands(commands.Cog):
         self.bot = bot
     @app_commands.command(name='add_character', description="Creates a character") 
     @app_commands.guilds(GUILD_ID) 
+    @audit_log
     async def add_character(self, interaction: discord.Interaction, name: str):
             name = name.lower()
             conn = await return_db_connection()
@@ -21,24 +22,24 @@ class CharacterCommands(commands.Cog):
             character = Character(discord_id, conn)
             success_flag = 'failed'
             embed = EmbedWrapper().return_base_embed()
+            command_specific_audit_extension = f"created character named {name}."
             
             try: 
                 message = await character.register_character(discord_id, name)
-                embed.set_image(url=create_success_image)
+                embed.set_thumbnail(url=create_success_image)
                 embed.add_field(name="Command Output for add_character", value=f"Success! \n\n {message}")
                 await interaction.response.send_message(embed=embed)
                 success_flag = 'succeeded'
 
             except sqlite3.IntegrityError as e:
                 message = f"Error, character name already in use:\n{e}"
-                embed.set_image(url=failure_image)
+                embed.set_thumbnail(url=failure_image)
                 embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
-                await conn.rollback()
                 await interaction.response.send_message(embed=embed)
 
             except Exception as e:
                 message = f"Something unexpected went wrong.\n\n ```{e}```"
-                embed.set_image(url=failure_image)
+                embed.set_thumbnail(url=failure_image)
                 embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
                 await conn.rollback()
                 await interaction.response.send_message(f"Error adding character:\n{e}")
@@ -69,9 +70,6 @@ class CharacterCommands(commands.Cog):
             message = character.rename_character(character_name, new_character_name)
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
-        except Exception as e: 
-            conn.rollback()
-            await interaction.response.send_message(f"Character renaming failed:\n{e}")
         finally:
                 # Call the helper to create a log
                 await log_command(
@@ -97,7 +95,6 @@ class CharacterCommands(commands.Cog):
             message = await character.delete_character(character_name, discord_id)
             await interaction.response.send_message(message)
         except Exception as e: 
-            conn.rollback()
             await interaction.response.send_message(f"Character deletion failed:\n{e}")
         finally:
             # Call the helper to create a log
@@ -134,7 +131,6 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(f"Character {character_name} level set to {level_int}.")
             success_flag = 'succeeded'
         except Exception as e: 
-            conn.rollback()
             await interaction.response.send_message(f"Error setting level:\n{e}")
         finally:
             # Call the helper to create a log
@@ -170,7 +166,6 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(message)
             success_flag = 'succeeded'
         except Exception as e: 
-            conn.rollback()
             await interaction.response.send_message(f"Error removing XP:\n{e}")
         finally:
             # Call the helper to create a log

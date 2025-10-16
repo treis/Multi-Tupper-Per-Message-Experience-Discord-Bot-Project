@@ -192,21 +192,25 @@ class Tupper(Connection):
             row = await cursor.fetchone()
         return row is not None  # True if tupper belongs to player
     
-    async def register_tupper(self, bracket, character_id):
+    async def register_tupper(self, bracket, character_name):
         """Register a tupper bracket. Brackets may not be re-used across a player."""
+        # Fetch the character_id first
+        async with self.conn.execute(
+            "SELECT character_id FROM characters WHERE name = ? AND discord_id = ?",
+            (character_name, self.discord_id)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                return f"Character '{character_name}' not found for your account."
+
+            character_id = row[0]  # get the ID
+
         await self.conn.execute(
             'INSERT INTO tupper_brackets (bracket, character_id, discord_id) VALUES (?, ?, ?)',
             (bracket, character_id, self.discord_id)
         )
         await self.conn.commit()
-
-        # Fetch character name
-        cursor = await self.conn.execute(
-            'SELECT name FROM characters WHERE character_id = ?',
-            (character_id,)
-        )
-        character_name = (await cursor.fetchone())[0]
-        return bracket, character_name
+        return f"{bracket} added to {character_id}."
 
     async def delete_tupper(self, bracket):
         """Delete a tupper bracket."""
