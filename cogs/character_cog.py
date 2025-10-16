@@ -41,18 +41,9 @@ class CharacterCommands(commands.Cog):
                 message = f"Something unexpected went wrong.\n\n ```{e}```"
                 embed.set_thumbnail(url=failure_image)
                 embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
-                await conn.rollback()
-                await interaction.response.send_message(f"Error adding character:\n{e}")
-
-            finally: 
-                # Call the helper to create a log
-                await log_command(
-                    conn,
-                    None,
-                    discord_id,
-                    'create_character',
-                    f"{success_flag} to create character {name}."
-                )
+                await interaction.response.send_message(embed=embed)
+            
+            return command_specific_audit_extension, success_flag
 
     @app_commands.command(name='rename_character', description="Renames a character")  
     @app_commands.guilds(GUILD_ID)
