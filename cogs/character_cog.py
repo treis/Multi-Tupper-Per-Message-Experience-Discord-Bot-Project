@@ -27,7 +27,7 @@ class CharacterCommands(commands.Cog):
                 message = await character.register_character(discord_id, name)
                 embed = await EmbedWrapper().return_embed(create_success_image, command_name, message)
                 await interaction.response.send_message(embed=embed)
-                success_flag = 'succeeded'
+                success_flag = 'succeed'
 
             except sqlite3.IntegrityError as e:
                 message = f"Error, character name already in use."
