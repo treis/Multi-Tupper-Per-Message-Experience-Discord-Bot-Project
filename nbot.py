@@ -13,14 +13,15 @@ if os.path.exists('guild.db'):
     test_delete_db()  # delete database on re-run. Uncomment this and invite catastrophe.
     create_db()       # create db
 
-async def return_db_connection(): # helper function that is re-used across the program to generate connections for the various commands (see cogs folder)
+async def return_db_connection():
+    # Creates and returns an aiosqlite connection for use elsewhere
     conn = await aiosqlite.connect('guild.db', check_same_thread=False)
-    return conn # cursor is used to execute commands, conn mainly exists past this point to be closed manually throughout the cog files
+    return conn
 
 ### Bot
 
 # Set up the bot's intents, guild object, and make sure it can read messages
-intents = discord.Intents.default()
+intents = discord.Intents.default() 
 intents.message_content = True
 GUILD_ID = discord.Object(id=guild_id)
 

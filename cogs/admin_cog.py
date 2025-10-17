@@ -72,6 +72,8 @@ class AdminCommands(commands.Cog):
             await conn.rollback()
             await interaction.followup.send(f"Error: {e}.")
 
+        await conn.close()
+
 async def setup(bot):
    await bot.add_cog(AdminCommands(bot))
 

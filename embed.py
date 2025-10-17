@@ -7,17 +7,19 @@ from secret import footer_text
 
 class EmbedWrapper():
     def __init__(self):
-
-        embed = discord.Embed(
+        self.embed = discord.Embed(
             title='',
             description='',
             url='',
             color=discord.Color.random(),
             timestamp=datetime.now()
-        )   
+        )
 
-        self.embed = embed
-
-    def return_base_embed(self): 
+    async def return_base_embed(self): 
         return self.embed
-
+    
+    async def return_embed(self, image, command_type, message):
+        self.embed.set_thumbnail(url=image)
+        self.embed.add_field(name=f"Command Output {command_type}", value=f"\n\n ```{message}```")
+        return self.embed
+    

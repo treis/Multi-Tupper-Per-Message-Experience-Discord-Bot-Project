@@ -5,7 +5,7 @@ from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 from embed import EmbedWrapper
 from log_command import audit_log
-from secret import minor_write_image, failure_image
+from secret import tupper_image, failure_image
 
 class TupperCommands(commands.Cog): # create a class for TupperCommand cog with methods that will become commands to be registered in main bot file at the end of this file
     def __init__(self, bot):
@@ -19,17 +19,22 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
         discord_id = interaction.user.id 
         tupper = Tupper(discord_id, conn)
         success_flag = 'fail'
-        embed = EmbedWrapper().return_base_embed()
-        command_specific_audit_extension = f"added tupper bracket {bracket} to character {character_name}."
-
+        command_specific_audit_extension = f"tupper bracket {bracket} to character {character_name}."
+        command_name = 'add_tupper'
+    
         try:
             message = await tupper.register_tupper(bracket, character_name)
-            await interaction.response.send_message(f"{message}")
+            embed = await EmbedWrapper().return_embed(tupper_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
 
         except Exception as e: 
-             await interaction.response.send_message(f"{e}")
+            message = f"Something unexpected went wrong when adding your tupper:\n\n{e}."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
 
+        await conn.close()
         return command_specific_audit_extension, success_flag
+
 
     @app_commands.command(name='remove_tupper', description="Removes a tupper.")
     @app_commands.guilds(GUILD_ID)
@@ -40,22 +45,31 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
         tupper = Tupper(discord_id, conn)
         success_flag = 'fail'
         command_specific_audit_extension = f"removed tupper bracket {bracket}."
+        command_name = 'remove_tupper'
 
         if not await tupper.tupper_belongs_to_player(bracket):
-            await interaction.response.send_message("This tupper does not belong to you, or, maybe you forgot the colon.")
-            return
-        valid_brackets = bracket.endswith(':') 
-        if not valid_brackets:
-            await interaction.response.send_message(f"Make sure that your tupper brackets end with a colon.")
-            return
+            message = f"You do not own tupper **{bracket}**. Check which ones you own with /my_characters."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
+    
+        if not bracket.endswith(':'):
+            message = f"Your tupper brackets did not end with a colon."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
+
         try: 
             message = await tupper.delete_tupper(bracket)
-            await interaction.response.send_message(message)
-            success_flag = 'succeeded'
-        except Exception as e: 
-            await interaction.response.send_message(f"Error removing tupper:\n{e}")
+            embed = await EmbedWrapper().return_embed(tupper_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
+            success_flag = 'succeed'
+    
+        except Exception as e:
+            message = f"Unexpected error executing {command_name}:\n\n{e}"
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             await conn.rollback()
 
+        await conn.close()
         return command_specific_audit_extension, success_flag
 
 async def setup(bot): # this asynchronous function must exist in order for the main bot file to be able to register it 

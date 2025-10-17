@@ -5,11 +5,10 @@ from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 import sqlite3
 from log_command import audit_log
-from secret import create_success_image, failure_image
+from secret import tupper_image, create_success_image, failure_image, delete_image
 from embed import EmbedWrapper
 
 class CharacterCommands(commands.Cog):
-
     def __init__(self, bot):
         self.bot = bot
     @app_commands.command(name='add_character', description="Creates a character") 
@@ -21,27 +20,25 @@ class CharacterCommands(commands.Cog):
             discord_id = interaction.user.id
             character = Character(discord_id, conn)
             success_flag = 'fail'
-            embed = EmbedWrapper().return_base_embed()
+            command_name = 'add_character'
             command_specific_audit_extension = f"create character named {name}."
             
             try: 
                 message = await character.register_character(discord_id, name)
-                embed.set_thumbnail(url=create_success_image)
-                embed.add_field(name="Command Output for add_character", value=f"Success! \n\n {message}")
+                embed = await EmbedWrapper().return_embed(create_success_image, command_name, message)
                 await interaction.response.send_message(embed=embed)
                 success_flag = 'succeeded'
 
             except sqlite3.IntegrityError as e:
-                message = f"Error, character name already in use:\n{e}"
-                embed.set_thumbnail(url=failure_image)
-                embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
+                message = f"Error, character name already in use."
+                embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
                 await interaction.response.send_message(embed=embed)
 
             except Exception as e:
-                message = f"Something unexpected went wrong.\n\n ```{e}```"
-                embed.set_thumbnail(url=failure_image)
-                embed.add_field(name="Command Output for add_character", value=f"Failure. \n\n {e}")
+                message = f"Something unexpected went wrong.\n\n {e}"
+                embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
                 await interaction.response.send_message(embed=embed)
+
             
             return command_specific_audit_extension, success_flag
 
@@ -54,21 +51,30 @@ class CharacterCommands(commands.Cog):
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
         success_flag = 'fail'
+        command_name = 'rename_character'
         command_specific_audit_extension = f"rename character {character_name} to {new_character_name}"
     
         if not character_id:
-            await interaction.response.send_message("You do not own this character.")
+            message = "You do not own this character."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             return
+        
         try: 
-            message = character.rename_character(character_name, new_character_name)
-            await interaction.response.send_message(message)
+            message = await character.rename_character(character_name, new_character_name)
+            embed = await EmbedWrapper().return_embed(tupper_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             success_flag = 'succeed'
+    
         except Exception as e:
-             await interaction.response.send_message(e)
+            message = f"Unexpected error executing {command_name}:\n\n{e}"
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
+            await conn.rollback()
+
 
         return command_specific_audit_extension, success_flag
-        
-
+    
     @app_commands.command(name='delete_character', description="Deletes a character") 
     @app_commands.guilds(GUILD_ID)
     @audit_log 
@@ -78,84 +84,106 @@ class CharacterCommands(commands.Cog):
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
         success_flag = 'fail'
+        command_name = 'delete_character'
         command_specific_audit_extension = f"delete character {character_name}."
 
         if not character_id:
-            await interaction.response.send_message("You do not own this character.")
+            message = f"Character **{character_name}** was not found."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             return
+            
         try: 
             message = await character.delete_character(character_name, discord_id)
+            embed = await EmbedWrapper().return_embed(delete_image, command_name, message)
             await interaction.response.send_message(message)
-        except Exception as e: 
-            await interaction.response.send_message(f"Character deletion failed:\n{e}")
+            success_flag = 'succeed'
 
+        except Exception as e:
+            message = f"Unexpected error executing {command_name}:\n\n{e}"
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
+            await conn.rollback()
+
+        await conn.close()
         return command_specific_audit_extension, success_flag
 
 
     @app_commands.command(name='set_level_of_character', description="Sets character level") 
     @app_commands.guilds(GUILD_ID)
     @audit_log
-    async def set_level_of_character(self, interaction: discord.Interaction, character_name: str, level: str):
+    async def set_level_of_character(self, interaction: discord.Interaction, character_name: str, level: int):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
         success_flag = 'fail'
+        command_name = 'set_level_of_character'
         command_specific_audit_extension = f"set level of {character_name} to {level}."
 
         if not character_id:
-            await interaction.response.send_message("You do not own this character.")
+            message = f"Character **{character_name}** was not found."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             return
-        try:
-            level_int = int(level)
-            if not 1 <= level_int <= 20:
-                await interaction.response.send_message("Please input a number from 1-20.")
-                return
-        except ValueError as e:
-            await interaction.response.send_message(f"Invalid input:\n{e}")
+
+        if not 1 <= level <= 20:
+            message = f"**{level}** is not between 1 and 20."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             return
+        
         try:
-            await character.set_level(character_name, level_int, discord_id)
-            await interaction.response.send_message(f"Character {character_name} level set to {level_int}.")
+            message = await character.set_level(character_name, level, discord_id)
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             success_flag = 'succeed'
-        except Exception as e: 
-            await interaction.response.send_message(f"Error setting level:\n{e}")
+
+        except Exception as e:
+            message = f"Unexpected error executing {command_name}:\n\n{e}"
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             await conn.rollback()
-            
-            return command_specific_audit_extension, success_flag
+
+        await conn.close()    
+        return command_specific_audit_extension, success_flag
 
     @app_commands.command(name='remove_xp_from_character', description="Removes XP from a character name.")  
     @app_commands.guilds(GUILD_ID)
     @audit_log
-    async def remove_xp_from_character(self, interaction: discord.Interaction, character_name: str, xp: str):
+    async def remove_xp_from_character(self, interaction: discord.Interaction, character_name: str, xp: int):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         character = Character(discord_id, conn)
         character_id = await character.get_owned_character(character_name)
         success_flag = 'fail'
+        command_name = 'remove_xp_from_character'
         command_specific_audit_extension = f"remove {xp} from character {character_name}."
 
         if not character_id:
-            await interaction.response.send_message("Please type a character name.  You can check the ones you own with /see_my_characters.")
+            message = f"Character **{character_name}** was not found."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             return
-        try:
-            xp_int = int(xp)
-            if xp_int < 0:
-                await interaction.response.send_message("XP must be positive.")
-                return
-        except ValueError as e:
-            await interaction.response.send_message(f"Invalid XP input:\n{e}")
-            await conn.rollback()
+
+        if xp < 0:
+            message = f"**{xp}** is not greater than 0. Nice try, though."
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            return
 
         try:
-            message = await character.remove_xp(character_name, xp_int, discord_id)
+            message = await character.remove_xp(character_name, xp, discord_id)
+            embed = await EmbedWrapper().return_embed(delete_image, command_name, message)
             await interaction.response.send_message(message)
-            success_flag = 'succeeded'
+            success_flag = 'succeed'
             
-        except Exception as e: 
-            await interaction.response.send_message(f"Error removing XP:\n{e}")
+        except Exception as e:
+            message = f"Unexpected error executing {command_name}:\n\n{e}"
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
             await conn.rollback()
 
+        await conn.close()
         return command_specific_audit_extension, success_flag
 
 async def setup(bot):

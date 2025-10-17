@@ -210,7 +210,7 @@ class Tupper(Connection):
             (bracket, character_id, self.discord_id)
         )
         await self.conn.commit()
-        return f"{bracket} added to {character_id}."
+        return f"{bracket} added to {character_name}."
 
     async def delete_tupper(self, bracket):
         """Delete a tupper bracket."""
