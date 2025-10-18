@@ -12,7 +12,6 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
         self.bot = bot
 
     @app_commands.command(name='add_tupper', description="Adds a tupper.")
-    @app_commands.guilds(GUILD_ID)
     @audit_log
     async def add_tupper(self, interaction: discord.Interaction, bracket: str, character_name: str):
         conn = await return_db_connection()
@@ -22,6 +21,11 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
         command_specific_audit_extension = f"tupper bracket {bracket} to character {character_name}."
         command_name = 'add_tupper'
     
+        if not bracket.endswith(':'):
+            message = f"```{bracket} is not a valid tupper. Make sure it ends with a colon.```"
+            embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
+            await interaction.response.send_message(embed=embed)
+
         try:
             message = await tupper.register_tupper(bracket, character_name)
             embed = await EmbedWrapper().return_embed(tupper_image, command_name, message)
@@ -32,12 +36,10 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
             embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
             await interaction.response.send_message(embed=embed)
 
-        await conn.close()
         return command_specific_audit_extension, success_flag
 
 
     @app_commands.command(name='remove_tupper', description="Removes a tupper.")
-    @app_commands.guilds(GUILD_ID)
     @audit_log
     async def remove_tupper(self, interaction: discord.Interaction, bracket: str):
         conn = await return_db_connection()
@@ -69,7 +71,6 @@ class TupperCommands(commands.Cog): # create a class for TupperCommand cog with 
             await interaction.response.send_message(embed=embed)
             await conn.rollback()
 
-        await conn.close()
         return command_specific_audit_extension, success_flag
 
 async def setup(bot): # this asynchronous function must exist in order for the main bot file to be able to register it 

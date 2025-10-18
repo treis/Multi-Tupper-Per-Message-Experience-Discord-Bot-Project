@@ -12,10 +12,8 @@ class CharacterCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     @app_commands.command(name='add_character', description="Creates a character") 
-    @app_commands.guilds(GUILD_ID) 
     @audit_log
     async def add_character(self, interaction: discord.Interaction, name: str):
-            name = name.lower()
             conn = await return_db_connection()
             discord_id = interaction.user.id
             character = Character(discord_id, conn)
@@ -43,7 +41,6 @@ class CharacterCommands(commands.Cog):
             return command_specific_audit_extension, success_flag
 
     @app_commands.command(name='rename_character', description="Renames a character")  
-    @app_commands.guilds(GUILD_ID)
     @audit_log
     async def rename_character(self, interaction: discord.Interaction, character_name: str, new_character_name: str):
         conn = await return_db_connection()
@@ -76,7 +73,6 @@ class CharacterCommands(commands.Cog):
         return command_specific_audit_extension, success_flag
     
     @app_commands.command(name='delete_character', description="Deletes a character") 
-    @app_commands.guilds(GUILD_ID)
     @audit_log 
     async def delete_character(self, interaction: discord.Interaction, character_name: str):
         conn = await return_db_connection()
@@ -105,12 +101,10 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(embed=embed)
             await conn.rollback()
 
-        await conn.close()
         return command_specific_audit_extension, success_flag
 
 
     @app_commands.command(name='set_level_of_character', description="Sets character level") 
-    @app_commands.guilds(GUILD_ID)
     @audit_log
     async def set_level_of_character(self, interaction: discord.Interaction, character_name: str, level: int):
         conn = await return_db_connection()
@@ -144,12 +138,10 @@ class CharacterCommands(commands.Cog):
             embed = await EmbedWrapper().return_embed(failure_image, command_name, message)
             await interaction.response.send_message(embed=embed)
             await conn.rollback()
-
-        await conn.close()    
+        
         return command_specific_audit_extension, success_flag
 
     @app_commands.command(name='remove_xp_from_character', description="Removes XP from a character name.")  
-    @app_commands.guilds(GUILD_ID)
     @audit_log
     async def remove_xp_from_character(self, interaction: discord.Interaction, character_name: str, xp: int):
         conn = await return_db_connection()
@@ -183,7 +175,7 @@ class CharacterCommands(commands.Cog):
             await interaction.response.send_message(embed=embed)
             await conn.rollback()
 
-        await conn.close()
+
         return command_specific_audit_extension, success_flag
 
 async def setup(bot):

@@ -6,6 +6,8 @@ from nbot import return_db_connection, GUILD_ID
 from secret import admin_role_command_text
 import io
 
+# Create a lock for users who like to spam commands and lock up the database
+
 class AdminCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -14,7 +16,6 @@ class AdminCommands(commands.Cog):
         name='generate_logs',
         description="Returns logs by optional parameters, only usable by admins."
     )
-    @app_commands.guilds(GUILD_ID)
     @app_commands.choices(command_type=[ # default list of options for 'command_type' field when it's being built by the user.
         app_commands.Choice(name="register_player", value="register_player"),
         app_commands.Choice(name="create_character", value="create_character"),
@@ -46,7 +47,9 @@ class AdminCommands(commands.Cog):
         
         await interaction.response.defer() # stops discord from assuming the command failed in case it takes a while (which may be the case depending on the amount of rows returned from the database)
         discord_id = interaction.user.id
-        conn = await return_db_connection()
+
+        async with db_lock:
+            conn = await return_db_connection()
 
         try:
             audit = AuditLogging(discord_id, conn) # create an AuditLogging object 
@@ -71,8 +74,6 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             await conn.rollback()
             await interaction.followup.send(f"Error: {e}.")
-
-        await conn.close()
 
 async def setup(bot):
    await bot.add_cog(AdminCommands(bot))

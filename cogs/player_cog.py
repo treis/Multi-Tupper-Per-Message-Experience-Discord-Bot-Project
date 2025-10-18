@@ -4,7 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from nbot import return_db_connection, GUILD_ID
 from embed import EmbedWrapper
-from log_command import log_command, audit_log
+from log_command import audit_log
 from embed import EmbedWrapper
 from secret import create_success_image, failure_image, see_characters_image
 
@@ -14,7 +14,6 @@ class PlayerCommands(commands.Cog):
 
 
     @app_commands.command(name='my_characters', description="Returns a list of your characters.")
-    @app_commands.guilds(GUILD_ID)
     @audit_log
 
     async def see_my_characters(self, interaction: discord.Interaction):
@@ -22,8 +21,8 @@ class PlayerCommands(commands.Cog):
         discord_id = interaction.user.id
         player = Player(discord_id, conn)
         success_flag = 'fail'
-        embed = EmbedWrapper().return_base_embed()
-        command_specific_audit_extension = None
+        embed = await EmbedWrapper().return_base_embed()
+        command_specific_audit_extension = ""
 
         try:
             message = await player.see_my_characters()
@@ -42,15 +41,14 @@ class PlayerCommands(commands.Cog):
     
 
     @app_commands.command(name='register_me', description="Adds you to the database so you can use other functions of the bot.")
-    @app_commands.guilds(GUILD_ID)
     @audit_log
     async def register_player(self, interaction: discord.Interaction):
         conn = await return_db_connection()
         discord_id = interaction.user.id
         player = Player(discord_id, conn)
         success_flag = 'fail'
-        embed = EmbedWrapper().return_base_embed()
-        command_specific_audit_extension = None
+        embed = await EmbedWrapper().return_base_embed()
+        command_specific_audit_extension = ""
 
         try: 
             message = await player.register_player(interaction.user.name)
